@@ -1,0 +1,454 @@
+{
+  "node_type": "module",
+  "name": "diff_engine",
+  "qualname": "diff_engine",
+  "lineno": 1,
+  "end_lineno": 423,
+  "file_path": "work/diff_engine.py",
+  "language": "python",
+  "signature": null,
+  "docstring": null,
+  "decorators": [],
+  "exceptions": [],
+  "children": [
+    {
+      "node_type": "class",
+      "name": "EntityDiff",
+      "qualname": "diff_engine.EntityDiff",
+      "lineno": 33,
+      "end_lineno": 41,
+      "file_path": "work/diff_engine.py",
+      "language": "python",
+      "signature": null,
+      "docstring": null,
+      "decorators": [
+        "dataclass"
+      ],
+      "exceptions": [],
+      "children": []
+    },
+    {
+      "node_type": "class",
+      "name": "DiffResult",
+      "qualname": "diff_engine.DiffResult",
+      "lineno": 45,
+      "end_lineno": 72,
+      "file_path": "work/diff_engine.py",
+      "language": "python",
+      "signature": null,
+      "docstring": null,
+      "decorators": [
+        "dataclass"
+      ],
+      "exceptions": [],
+      "children": [
+        {
+          "node_type": "method",
+          "name": "needs_llm_entities",
+          "qualname": "diff_engine.DiffResult.needs_llm_entities",
+          "lineno": 51,
+          "end_lineno": 57,
+          "file_path": "work/diff_engine.py",
+          "language": "python",
+          "signature": {
+            "name": "needs_llm_entities",
+            "return_annotation": "List[ApiNode]",
+            "is_async": false,
+            "parameters": [
+              {
+                "name": "self",
+                "kind": "positional_or_keyword",
+                "annotation": null,
+                "default": null
+              }
+            ]
+          },
+          "docstring": null,
+          "decorators": [],
+          "exceptions": [],
+          "children": []
+        },
+        {
+          "node_type": "method",
+          "name": "has_changes",
+          "qualname": "diff_engine.DiffResult.has_changes",
+          "lineno": 59,
+          "end_lineno": 60,
+          "file_path": "work/diff_engine.py",
+          "language": "python",
+          "signature": {
+            "name": "has_changes",
+            "return_annotation": "bool",
+            "is_async": false,
+            "parameters": [
+              {
+                "name": "self",
+                "kind": "positional_or_keyword",
+                "annotation": null,
+                "default": null
+              }
+            ]
+          },
+          "docstring": null,
+          "decorators": [],
+          "exceptions": [],
+          "children": []
+        },
+        {
+          "node_type": "method",
+          "name": "summary",
+          "qualname": "diff_engine.DiffResult.summary",
+          "lineno": 62,
+          "end_lineno": 72,
+          "file_path": "work/diff_engine.py",
+          "language": "python",
+          "signature": {
+            "name": "summary",
+            "return_annotation": "str",
+            "is_async": false,
+            "parameters": [
+              {
+                "name": "self",
+                "kind": "positional_or_keyword",
+                "annotation": null,
+                "default": null
+              }
+            ]
+          },
+          "docstring": null,
+          "decorators": [],
+          "exceptions": [],
+          "children": []
+        }
+      ]
+    },
+    {
+      "node_type": "function",
+      "name": "compute_diff",
+      "qualname": "diff_engine.compute_diff",
+      "lineno": 79,
+      "end_lineno": 147,
+      "file_path": "work/diff_engine.py",
+      "language": "python",
+      "signature": {
+        "name": "compute_diff",
+        "return_annotation": "DiffResult",
+        "is_async": false,
+        "parameters": [
+          {
+            "name": "old_root",
+            "kind": "positional_or_keyword",
+            "annotation": "ApiNode",
+            "default": null
+          },
+          {
+            "name": "new_root",
+            "kind": "positional_or_keyword",
+            "annotation": "ApiNode",
+            "default": null
+          }
+        ]
+      },
+      "docstring": null,
+      "decorators": [],
+      "exceptions": [],
+      "children": []
+    },
+    {
+      "node_type": "function",
+      "name": "save_snapshot",
+      "qualname": "diff_engine.save_snapshot",
+      "lineno": 154,
+      "end_lineno": 170,
+      "file_path": "work/diff_engine.py",
+      "language": "python",
+      "signature": {
+        "name": "save_snapshot",
+        "return_annotation": "Path",
+        "is_async": false,
+        "parameters": [
+          {
+            "name": "doc",
+            "kind": "positional_or_keyword",
+            "annotation": "ModuleDocModel",
+            "default": null
+          },
+          {
+            "name": "snapshot_dir",
+            "kind": "positional_or_keyword",
+            "annotation": "str",
+            "default": "'snapshots'"
+          }
+        ]
+      },
+      "docstring": null,
+      "decorators": [],
+      "exceptions": [],
+      "children": []
+    },
+    {
+      "node_type": "function",
+      "name": "load_snapshot",
+      "qualname": "diff_engine.load_snapshot",
+      "lineno": 173,
+      "end_lineno": 185,
+      "file_path": "work/diff_engine.py",
+      "language": "python",
+      "signature": {
+        "name": "load_snapshot",
+        "return_annotation": "Optional[ApiNode]",
+        "is_async": false,
+        "parameters": [
+          {
+            "name": "module_name",
+            "kind": "positional_or_keyword",
+            "annotation": "str",
+            "default": null
+          },
+          {
+            "name": "snapshot_dir",
+            "kind": "positional_or_keyword",
+            "annotation": "str",
+            "default": "'snapshots'"
+          }
+        ]
+      },
+      "docstring": null,
+      "decorators": [],
+      "exceptions": [],
+      "children": []
+    },
+    {
+      "node_type": "function",
+      "name": "diff_with_snapshot",
+      "qualname": "diff_engine.diff_with_snapshot",
+      "lineno": 188,
+      "end_lineno": 215,
+      "file_path": "work/diff_engine.py",
+      "language": "python",
+      "signature": {
+        "name": "diff_with_snapshot",
+        "return_annotation": "Tuple[DiffResult, bool]",
+        "is_async": false,
+        "parameters": [
+          {
+            "name": "doc",
+            "kind": "positional_or_keyword",
+            "annotation": "ModuleDocModel",
+            "default": null
+          },
+          {
+            "name": "snapshot_dir",
+            "kind": "positional_or_keyword",
+            "annotation": "str",
+            "default": "'snapshots'"
+          }
+        ]
+      },
+      "docstring": null,
+      "decorators": [],
+      "exceptions": [],
+      "children": []
+    },
+    {
+      "node_type": "function",
+      "name": "_flatten_tree",
+      "qualname": "diff_engine._flatten_tree",
+      "lineno": 222,
+      "end_lineno": 231,
+      "file_path": "work/diff_engine.py",
+      "language": "python",
+      "signature": {
+        "name": "_flatten_tree",
+        "return_annotation": "Dict[str, ApiNode]",
+        "is_async": false,
+        "parameters": [
+          {
+            "name": "root",
+            "kind": "positional_or_keyword",
+            "annotation": "ApiNode",
+            "default": null
+          }
+        ]
+      },
+      "docstring": null,
+      "decorators": [],
+      "exceptions": [],
+      "children": []
+    },
+    {
+      "node_type": "function",
+      "name": "_detect_change_type",
+      "qualname": "diff_engine._detect_change_type",
+      "lineno": 234,
+      "end_lineno": 267,
+      "file_path": "work/diff_engine.py",
+      "language": "python",
+      "signature": {
+        "name": "_detect_change_type",
+        "return_annotation": "str",
+        "is_async": false,
+        "parameters": [
+          {
+            "name": "old",
+            "kind": "positional_or_keyword",
+            "annotation": "ApiNode",
+            "default": null
+          },
+          {
+            "name": "new",
+            "kind": "positional_or_keyword",
+            "annotation": "ApiNode",
+            "default": null
+          }
+        ]
+      },
+      "docstring": null,
+      "decorators": [],
+      "exceptions": [],
+      "children": []
+    },
+    {
+      "node_type": "function",
+      "name": "_signature_changed",
+      "qualname": "diff_engine._signature_changed",
+      "lineno": 270,
+      "end_lineno": 294,
+      "file_path": "work/diff_engine.py",
+      "language": "python",
+      "signature": {
+        "name": "_signature_changed",
+        "return_annotation": "bool",
+        "is_async": false,
+        "parameters": [
+          {
+            "name": "old",
+            "kind": "positional_or_keyword",
+            "annotation": "ApiNode",
+            "default": null
+          },
+          {
+            "name": "new",
+            "kind": "positional_or_keyword",
+            "annotation": "ApiNode",
+            "default": null
+          }
+        ]
+      },
+      "docstring": null,
+      "decorators": [],
+      "exceptions": [],
+      "children": []
+    },
+    {
+      "node_type": "function",
+      "name": "_is_complex",
+      "qualname": "diff_engine._is_complex",
+      "lineno": 297,
+      "end_lineno": 333,
+      "file_path": "work/diff_engine.py",
+      "language": "python",
+      "signature": {
+        "name": "_is_complex",
+        "return_annotation": "bool",
+        "is_async": false,
+        "parameters": [
+          {
+            "name": "node",
+            "kind": "positional_or_keyword",
+            "annotation": "ApiNode",
+            "default": null
+          }
+        ]
+      },
+      "docstring": null,
+      "decorators": [],
+      "exceptions": [],
+      "children": []
+    },
+    {
+      "node_type": "function",
+      "name": "_decide_needs_llm",
+      "qualname": "diff_engine._decide_needs_llm",
+      "lineno": 336,
+      "end_lineno": 346,
+      "file_path": "work/diff_engine.py",
+      "language": "python",
+      "signature": {
+        "name": "_decide_needs_llm",
+        "return_annotation": "bool",
+        "is_async": false,
+        "parameters": [
+          {
+            "name": "change_type",
+            "kind": "positional_or_keyword",
+            "annotation": "str",
+            "default": null
+          },
+          {
+            "name": "is_complex",
+            "kind": "positional_or_keyword",
+            "annotation": "bool",
+            "default": null
+          }
+        ]
+      },
+      "docstring": null,
+      "decorators": [],
+      "exceptions": [],
+      "children": []
+    },
+    {
+      "node_type": "function",
+      "name": "_node_to_dict",
+      "qualname": "diff_engine._node_to_dict",
+      "lineno": 353,
+      "end_lineno": 383,
+      "file_path": "work/diff_engine.py",
+      "language": "python",
+      "signature": {
+        "name": "_node_to_dict",
+        "return_annotation": "dict",
+        "is_async": false,
+        "parameters": [
+          {
+            "name": "node",
+            "kind": "positional_or_keyword",
+            "annotation": "ApiNode",
+            "default": null
+          }
+        ]
+      },
+      "docstring": null,
+      "decorators": [],
+      "exceptions": [],
+      "children": []
+    },
+    {
+      "node_type": "function",
+      "name": "_dict_to_node",
+      "qualname": "diff_engine._dict_to_node",
+      "lineno": 386,
+      "end_lineno": 423,
+      "file_path": "work/diff_engine.py",
+      "language": "python",
+      "signature": {
+        "name": "_dict_to_node",
+        "return_annotation": "ApiNode",
+        "is_async": false,
+        "parameters": [
+          {
+            "name": "d",
+            "kind": "positional_or_keyword",
+            "annotation": "dict",
+            "default": null
+          }
+        ]
+      },
+      "docstring": null,
+      "decorators": [],
+      "exceptions": [],
+      "children": []
+    }
+  ]
+}

@@ -1,0 +1,340 @@
+from __future__ import annotations
+
+import argparse
+import os
+from datetime import date
+from pathlib import Path
+from typing import Iterator, List, Optional
+
+from tools.extractors.c_extractor import CExtractor
+from tools.extractors.python_extractor import PythonExtractor
+from tools.language_detection import detect_language
+from tools.mode_selector import choose_mode
+from tools.models import ModuleDocModel
+from tools.render_llm_context import render_llm_context_document
+from tools.render_spec_md import render_spec_document
+from tools.llm_enricher import enrich_with_llm
+from tools.diff_engine import diff_with_snapshot, save_snapshot
+
+
+SUPPORTED_SOURCE_EXTENSIONS = {".py", ".c", ".h"}
+
+
+def format_ru_date() -> str:
+    months = [
+        "января", "февраля", "марта", "апреля", "мая", "июня",
+        "июля", "августа", "сентября", "октября", "ноября", "декабря",
+    ]
+    d = date.today()
+    return "{} {} {}".format(d.day, months[d.month - 1], d.year)
+
+
+def choose_extractor(language: str):
+    if language == "python":
+        return PythonExtractor()
+    if language == "c":
+        return CExtractor()
+    return None
+
+
+def iter_source_files(source_root: Path) -> Iterator[Path]:
+    for path in source_root.rglob("*"):
+        if path.is_file() and path.suffix.lower() in SUPPORTED_SOURCE_EXTENSIONS:
+            if not should_skip(path):
+                yield path
+
+
+def should_skip(path: Path) -> bool:
+    skip_parts = {".git", ".venv", "venv", "__pycache__", "node_modules", "docs"}
+    return any(part in skip_parts for part in path.parts)
+
+
+def module_name_from_path(source_root: Path, file_path: Path) -> str:
+    relative = file_path.relative_to(source_root)
+    return ".".join(relative.with_suffix("").parts)
+
+
+def make_output_path(output_root: Path, module_name: str, mode: str) -> Path:
+    stem = module_name.replace(".", "_")
+    if mode == "llm_context":
+        return output_root / "llm_{}.md".format(stem)
+    return output_root / "spec_{}.md".format(stem)
+
+
+def _auto_short_description(
+    component_name: str,
+    component_type: str,
+    root_docstring: str,
+) -> str:
+    """Генерирует краткое описание если не передано явно.
+    Приоритет: docstring модуля → шаблон по типу компонента.
+    """
+    if root_docstring:
+        first = root_docstring.strip().splitlines()[0].strip()
+        if first and len(first) <= 200:
+            return first
+
+    templates = {
+        "APPLICATION": "Приложение для автоматической обработки данных.",
+        "MODULE":      "Программный модуль.",
+        "COMPONENT":   "Программный компонент.",
+        "LIBRARY":     "Программная библиотека.",
+        "SERVICE":     "Программный сервис.",
+    }
+    ctype = (component_type or "MODULE").upper()
+    return templates.get(ctype, "Программный компонент.")
+
+
+def build_doc_model(
+    file_path: Path,
+    source_root: Path,
+    version: str,
+    status: str,
+    espd_code: str,
+    cid: str,
+    marketplace_url: str,
+    short_description: str,
+    component_use_category: str,
+    component_type: str,
+    tags: str,
+    authors: List[str],
+    organizations: List[str],
+    links: str,
+    component_name: str = "",
+) -> Optional[ModuleDocModel]:
+    source = file_path.read_text(encoding="utf-8")
+    language = detect_language(str(file_path), source)
+
+    extractor = choose_extractor(language)
+    if extractor is None:
+        return None
+
+    module_name     = module_name_from_path(source_root, file_path)
+    normalized_path = str(file_path).replace("\\", "/")
+
+    tree = extractor.build_tree(
+        source=source,
+        file_path=normalized_path,
+        module_name=module_name,
+    )
+
+    effective_name = (
+        component_name.strip()
+        or _name_from_docstring(tree)
+        or module_name
+    )
+
+    # Автозаполнение краткого описания если не передано явно
+    effective_desc = short_description.strip() or _auto_short_description(
+        effective_name,
+        component_type,
+        (tree.docstring or "").strip(),
+    )
+
+    return ModuleDocModel(
+        component_name=effective_name,
+        source_path=normalized_path,
+        language=language,
+        version=version,
+        status=status,
+        date=format_ru_date(),
+        root=tree,
+        espd_code=espd_code,
+        cid=cid,
+        marketplace_url=marketplace_url,
+        short_description=effective_desc,
+        component_use_category=component_use_category,
+        component_type=component_type,
+        tags=tags,
+        authors=authors,
+        organizations=organizations,
+        links=links,
+    )
+
+
+def _name_from_docstring(tree) -> str:
+    doc = (tree.docstring or "").strip()
+    if not doc:
+        return ""
+    first_line = doc.splitlines()[0].strip()
+    if len(first_line) <= 80 and not first_line.endswith("."):
+        return first_line
+    return ""
+
+
+def process_file(
+    file_path: Path,
+    source_root: Path,
+    template_path: Path,
+    output_root: Path,
+    version: str,
+    status: str,
+    mode: str,
+    espd_code: str,
+    cid: str,
+    marketplace_url: str,
+    short_description: str,
+    component_use_category: str,
+    component_type: str,
+    tags: str,
+    authors: List[str],
+    organizations: List[str],
+    links: str,
+    enrich: bool = False,
+    api_key: str = "",
+    component_name: str = "",
+) -> Optional[Path]:
+    doc_model = build_doc_model(
+        file_path=file_path,
+        source_root=source_root,
+        version=version,
+        status=status,
+        espd_code=espd_code,
+        cid=cid,
+        marketplace_url=marketplace_url,
+        short_description=short_description,
+        component_use_category=component_use_category,
+        component_type=component_type,
+        tags=tags,
+        authors=authors,
+        organizations=organizations,
+        links=links,
+        component_name=component_name,
+    )
+
+    if doc_model is None:
+        return None
+
+    selected_mode = choose_mode(mode)
+
+    if selected_mode == "auto":
+        selected_mode = "clean"
+        if api_key or os.environ.get("OPENROUTER_API_KEY", ""):
+            enrich = True
+
+    diff_result, is_first_run = diff_with_snapshot(doc_model)
+    if diff_result.has_changes() or is_first_run:
+        print("[DIFF] {}".format(diff_result.summary()))
+    else:
+        print("[DIFF] Изменений не обнаружено.")
+
+    if enrich and selected_mode != "llm_context":
+        llm_targets = diff_result.needs_llm_entities()
+        if llm_targets:
+            print("[LLM] Обогащаем {} сущностей через OpenRouter...".format(len(llm_targets)))
+            doc_model = enrich_with_llm(
+                doc_model,
+                api_key=api_key or None,
+                verbose=True,
+                target_qualnames={n.qualname for n in llm_targets},
+            )
+        else:
+            print("[LLM] LLM не требуется — нет новых или сложных изменений.")
+            from tools.llm_enricher import enrich_idl_with_llm
+            doc_model = enrich_idl_with_llm(
+                doc_model,
+                api_key=api_key or None,
+                verbose=True,
+            )
+
+    if selected_mode == "llm_context":
+        rendered = render_llm_context_document(doc_model)
+    else:
+        rendered = render_spec_document(doc_model, str(template_path))
+
+    output_path = make_output_path(output_root, doc_model.component_name, selected_mode)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(rendered, encoding="utf-8")
+
+    if selected_mode != "llm_context":
+        save_snapshot(doc_model)
+
+    return output_path
+
+
+def parse_list_arg(value: str) -> List[str]:
+    if not value:
+        return []
+    return [item.strip() for item in value.split("|") if item.strip()]
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Generate Markdown specifications from source code."
+    )
+
+    parser.add_argument("--source-root",   default="work")
+    parser.add_argument("--template",      default="templates/spec_component_ru.md")
+    parser.add_argument("--output-root",   default="docs")
+    parser.add_argument("--version",       default="0.1")
+    parser.add_argument("--status",        default="черновик")
+    parser.add_argument(
+        "--mode", default="clean",
+        choices=["clean", "llm_context", "auto"],
+    )
+    parser.add_argument("--component-name", default="",
+        help="Имя компонента. Если не указано — берётся из docstring модуля или имени файла.")
+    parser.add_argument("--espd-code",      default="")
+    parser.add_argument("--cid",            default="")
+    parser.add_argument("--marketplace-url", default="")
+    parser.add_argument("--short-description", default="",
+        help="Краткое описание. Если не указано — берётся из docstring модуля.")
+    parser.add_argument("--component-use-category", default="")
+    parser.add_argument("--component-type", default="MODULE")
+    parser.add_argument("--tags",           default="")
+    parser.add_argument("--authors",        default="")
+    parser.add_argument("--organizations",  default="")
+    parser.add_argument("--links",          default="")
+    parser.add_argument("--enrich",         action="store_true")
+    parser.add_argument("--api-key",        default="")
+
+    args = parser.parse_args()
+
+    source_root   = Path(args.source_root)
+    template_path = Path(args.template)
+    output_root   = Path(args.output_root)
+
+    if not source_root.exists():
+        raise FileNotFoundError("Source root not found: {}".format(source_root))
+
+    if args.mode == "clean" and not template_path.exists():
+        raise FileNotFoundError("Template not found: {}".format(template_path))
+
+    authors       = parse_list_arg(args.authors)
+    organizations = parse_list_arg(args.organizations)
+
+    generated = []
+
+    for file_path in iter_source_files(source_root):
+        result = process_file(
+            file_path=file_path,
+            source_root=source_root,
+            template_path=template_path,
+            output_root=output_root,
+            version=args.version,
+            status=args.status,
+            mode=args.mode,
+            espd_code=args.espd_code,
+            cid=args.cid,
+            marketplace_url=args.marketplace_url,
+            short_description=args.short_description,
+            component_use_category=args.component_use_category,
+            component_type=args.component_type,
+            tags=args.tags,
+            authors=authors,
+            organizations=organizations,
+            links=args.links,
+            enrich=args.enrich,
+            api_key=args.api_key,
+            component_name=args.component_name,
+        )
+        if result is not None:
+            generated.append(result)
+
+    print("Generated files:")
+    for path in generated:
+        print("  -", path)
+
+
+if __name__ == "__main__":
+    main()
