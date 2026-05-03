@@ -409,6 +409,52 @@ def odf_appendix(items: list) -> str:
     return out
 
 
+def odf_interface_summary(fns: list) -> str:
+    """Генерирует секцию 2.2 — состав интерфейса."""
+    classes = [f for f in fns if f.get("is_class")]
+    methods = [f for f in fns if f.get("kind") == "Метод"]
+    funcs   = [f for f in fns if f.get("kind") == "Функция"]
+
+    xml = (
+        '   <text:list text:continue-numbering="true" text:style-name="L1">\n'
+        '    <text:list-item>\n'
+        '     <text:list>\n'
+        '      <text:list-header>\n'
+        '       <text:h text:style-name="P45" text:outline-level="1">2.2. Состав интерфейса</text:h>\n'
+        '      </text:list-header>\n'
+        '     </text:list>\n'
+        '    </text:list-item>\n'
+        '   </text:list>\n'
+        '   <text:p text:style-name="P40"/>\n'
+    )
+    from xml.sax.saxutils import escape as _e
+    lines = []
+    lines.append(f'Классов: {len(classes)}, функций верхнего уровня: {len(funcs)}, методов: {len(methods)}')
+    if classes:
+        lines.append('')
+        lines.append('Классы:')
+        for c in classes:
+            lines.append(f'  • {c["name"]} — {c.get("location", "")}')
+    if funcs:
+        lines.append('')
+        lines.append('Функции верхнего уровня:')
+        for f in funcs:
+            sig = f.get("signature") or f["name"]
+            lines.append(f'  • {sig}')
+    if methods:
+        lines.append('')
+        lines.append('Методы:')
+        for m in methods:
+            sig = m.get("signature") or m["name"]
+            lines.append(f'  • {sig}')
+
+    for line in lines:
+        xml += f'   <text:p text:style-name="P44">{_e(line)}</text:p>\n'
+
+    xml += '   <text:p text:style-name="P38"/>\n'
+    return xml
+
+
 # ---------------------------------------------------------------------------
 # fill_template  —  с проверкой каждой замены
 # ---------------------------------------------------------------------------
@@ -487,12 +533,23 @@ def fill_template(tmpl: str, data: dict) -> str:
         print("[INFO] introduction пустой — секция 1.1 не заменена")
 
     # --- Примечание (1.2) ---
+    # Удаляем шаблонный блок "Ключевые слова в документе" вместе с заменой P28
+    keywords_block = (
+        '\n   <text:list text:style-name="WWNum1">\n'
+        '    <text:list-header>\n'
+        '     <text:p text:style-name="P29">Ключевые слова в документе</text:p>\n'
+        '    </text:list-header>\n'
+        '   </text:list>'
+    )
     if data["notes"]:
-        r = _replace_once(r,
-            '<text:p text:style-name="P28"/>',
-            f'<text:p text:style-name="P28">{escape(data["notes"])}</text:p>',
-            "Примечание P28")
+        new_p28 = f'<text:p text:style-name="P28">{escape(data["notes"])}</text:p>'
+        old_p28_with_kw = '<text:p text:style-name="P28"/>' + keywords_block
+        if old_p28_with_kw in r:
+            r = r.replace(old_p28_with_kw, new_p28, 1)
+        else:
+            r = _replace_once(r, '<text:p text:style-name="P28"/>', new_p28, "Примечание P28")
     else:
+        r = r.replace(keywords_block, '', 1)
         print("[INFO] notes пустой — секция 1.2 не заменена")
 
     # --- Описание компонента ---
@@ -553,6 +610,24 @@ def fill_template(tmpl: str, data: dict) -> str:
                 print(f"[INFO] IDL блок вставлен ({len(data['idl_block'])} символов)")
             else:
                 print("[WARN] IDL блок не найден в шаблоне")
+
+    # --- Секция 2.2 состав интерфейса — вставляем ПОСЛЕ IDL, ПЕРЕД функциями ---
+    if data["functions"]:
+        summary_xml = odf_interface_summary(data["functions"])
+        # Ищем конец IDL блока — последний code_5f_cpp перед первой функцией 2.1.1
+        # Вставляем 2.2 прямо перед блоком функций
+        fn_anchor = '<text:bookmark-start text:name="__RefHeading___Toc72881_228845717"/>'
+        fn_pos = r.find(fn_anchor)
+        if fn_pos != -1:
+            list_start = r.rfind('<text:list text:continue-numbering', 0, fn_pos)
+            r = r[:list_start] + summary_xml + r[list_start:]
+        else:
+            # Fallback: вставляем перед P40 который идёт после IDL
+            p40_after_idl = r.find('<text:p text:style-name="P40"/>', r.find('2.1. ' + data.get("interface_title","") + ' IDL'))
+            if p40_after_idl != -1:
+                r = r[:p40_after_idl] + summary_xml + r[p40_after_idl:]
+            else:
+                print("[WARN] Не найдено место для вставки секции 2.2")
 
     # --- Функции ---
     if data["functions"]:
