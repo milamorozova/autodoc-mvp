@@ -33,13 +33,15 @@ def render_spec_document(doc: ModuleDocModel, template_path: str) -> str:
 
 
 def render_header_block(doc: ModuleDocModel) -> str:
-    espd  = doc.espd_code or "RU.—.XXXXX-XX"
-    cid   = doc.cid or "—"
-    url   = doc.marketplace_url or "—"
-    desc  = doc.short_description or "Описание не указано."
-    cat   = doc.component_use_category or "—"
-    ctype = doc.component_type or "MODULE"
-    tags  = doc.tags or "—"
+    espd   = doc.espd_code or "RU.—.XXXXX-XX"
+    cid    = doc.cid or "—"
+    url    = doc.marketplace_url or "—"
+    desc   = doc.short_description or "Описание не указано."
+    cat    = doc.component_use_category or "—"
+    ctype  = doc.component_type or "MODULE"
+    tags   = doc.tags or "—"
+    commit = getattr(doc, "commit", "") or "—"
+
     lines = [
         "| Поле | Значение |", "|---|---|",
         "| **ЕСПД** | `{}` |".format(espd),
@@ -52,6 +54,7 @@ def render_header_block(doc: ModuleDocModel) -> str:
         "| **Статус** | {} |".format(doc.status),
         "| **Дата изменения** | {} |".format(doc.date),
         "| **Версия** | {} |".format(doc.version),
+        "| **Коммит** | `{}` |".format(commit),
         "| **Теги** | {} |".format(tags),
         "| **Источник кода** | `{}` |".format(doc.source_path),
         "",
@@ -158,13 +161,10 @@ def _build_fallback_component_desc(doc: ModuleDocModel) -> str:
 
 
 def render_interface_title(root: ApiNode) -> str:
-    """Берём имя первого публичного класса с публичными методами,
-    иначе первого публичного класса, иначе IModule."""
     classes = [c for c in root.children
                if c.node_type == "class" and not c.name.startswith("_")]
     if not classes:
         return "IModule"
-    # Предпочитаем класс с публичными методами
     for cls in classes:
         pub = [m for m in cls.children
                if m.node_type == "method" and not m.name.startswith("_") and m.name != "__init__"]
@@ -282,8 +282,6 @@ def render_class_block(node: ApiNode, index: int) -> List[str]:
         len(public_methods), pluralize_ru(len(public_methods), "метод", "метода", "методов")))
     lines.append("")
 
-    # Конструктор показываем только если это НЕ dataclass
-    # (у dataclass конструктор генерируется автоматически и его пример бессмысленен)
     if not _is_dataclass(node):
         init_method = next(
             (c for c in node.children if c.node_type == "method" and c.name == "__init__"), None)
@@ -347,7 +345,6 @@ def render_function_block(node: ApiNode, index: int) -> List[str]:
 
 
 def render_logic_block(node: ApiNode) -> List[str]:
-    """Возвращает блок Логика работы если поле заполнено LLM."""
     logic = getattr(node, 'logic', None)
     if not logic:
         return []
@@ -467,9 +464,6 @@ def render_appendix_a(root: ApiNode) -> str:
 
 
 def render_example(node: ApiNode) -> str:
-    """Генерирует пример использования.
-    Для параметров с кастомными типами генерирует переменные-заглушки перед вызовом.
-    """
     if node.signature is None:
         return "# пример недоступен"
 
@@ -532,9 +526,6 @@ def _param_value_and_pre(
     kind: str,
     param_name: str,
 ) -> Tuple[str, List[str]]:
-    """Возвращает (значение_для_вызова, список_строк_перед_вызовом).
-    Если тип кастомный — генерируем переменную-заглушку перед вызовом.
-    """
     if kind == "vararg":
         ann = annotation or ""
         return ("'tag1', 'tag2'" if "str" in ann.lower() else "1, 2"), []
@@ -543,7 +534,6 @@ def _param_value_and_pre(
 
     lower_name = param_name.lower()
 
-    # Именованные подсказки по имени параметра
     name_hints = {
         "endpoint":     "'http://example.com'",
         "path":         "'output.json'",
@@ -571,7 +561,6 @@ def _param_value_and_pre(
 
     ann = annotation.lower()
 
-    # Примитивные типы — литерал, без заглушки
     if "list" in ann:
         if "dict" in ann: return "[]", []
         if "int"  in ann: return "[1, 2, 3]", []
@@ -588,9 +577,8 @@ def _param_value_and_pre(
     if "path"   in ann: return "Path('.')", []
     if "optional" in ann: return "None", []
 
-    # Кастомный тип — генерируем переменную перед вызовом
     type_name = annotation.split("[")[0].strip()
-    var_name = param_name  # используем имя параметра как имя переменной
+    var_name = param_name
     pre_line = "# {}: создайте объект типа {}".format(var_name, type_name)
     return var_name, [pre_line]
 

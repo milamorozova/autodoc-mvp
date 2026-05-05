@@ -37,7 +37,7 @@ class ApiNode:
     language: str = "python"
     signature: Optional[SignatureInfo] = None
     docstring: Optional[str] = None
-    logic: Optional[str] = None          # <-- НОВОЕ: логика работы от LLM
+    logic: Optional[str] = None          # логика работы от LLM
     decorators: List[str] = field(default_factory=list)
     exceptions: List[ExceptionInfo] = field(default_factory=list)
     children: List["ApiNode"] = field(default_factory=list)
@@ -63,6 +63,7 @@ class ModuleDocModel:
     authors: List[str] = field(default_factory=list)
     organizations: List[str] = field(default_factory=list)
     links: str = ""
+    commit: str = ""                     # хэш git коммита
 
     enriched: bool = False
     enriched_idl: Optional[str] = None

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import subprocess
 from datetime import date
 from pathlib import Path
 from typing import Iterator, List, Optional
@@ -27,6 +28,20 @@ def format_ru_date() -> str:
     ]
     d = date.today()
     return "{} {} {}".format(d.day, months[d.month - 1], d.year)
+
+
+def get_git_commit_hash() -> str:
+    """Возвращает короткий хэш текущего git коммита или пустую строку."""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            capture_output=True, text=True, timeout=5
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+    except Exception:
+        pass
+    return ""
 
 
 def choose_extractor(language: str):
@@ -66,9 +81,6 @@ def _auto_short_description(
     component_type: str,
     root_docstring: str,
 ) -> str:
-    """Генерирует краткое описание если не передано явно.
-    Приоритет: docstring модуля → шаблон по типу компонента.
-    """
     if root_docstring:
         first = root_docstring.strip().splitlines()[0].strip()
         if first and len(first) <= 200:
@@ -101,6 +113,7 @@ def build_doc_model(
     organizations: List[str],
     links: str,
     component_name: str = "",
+    commit: str = "",
 ) -> Optional[ModuleDocModel]:
     source = file_path.read_text(encoding="utf-8")
     language = detect_language(str(file_path), source)
@@ -124,7 +137,6 @@ def build_doc_model(
         or module_name
     )
 
-    # Автозаполнение краткого описания если не передано явно
     effective_desc = short_description.strip() or _auto_short_description(
         effective_name,
         component_type,
@@ -149,6 +161,7 @@ def build_doc_model(
         authors=authors,
         organizations=organizations,
         links=links,
+        commit=commit,
     )
 
 
@@ -183,6 +196,8 @@ def process_file(
     enrich: bool = False,
     api_key: str = "",
     component_name: str = "",
+    fodt_template: str = "",
+    commit: str = "",
 ) -> Optional[Path]:
     doc_model = build_doc_model(
         file_path=file_path,
@@ -200,6 +215,7 @@ def process_file(
         organizations=organizations,
         links=links,
         component_name=component_name,
+        commit=commit,
     )
 
     if doc_model is None:
@@ -249,6 +265,24 @@ def process_file(
     if selected_mode != "llm_context":
         save_snapshot(doc_model)
 
+    # --- Генерация .fodt если передан шаблон ---
+    if fodt_template and selected_mode != "llm_context":
+        fodt_path = Path(fodt_template)
+        if not fodt_path.exists():
+            print("[FODT] Шаблон не найден: {}".format(fodt_template))
+        else:
+            try:
+                from tools.fodt_filler import parse_markdown, fill_template
+                md_text = output_path.read_text(encoding="utf-8")
+                template_text = fodt_path.read_text(encoding="utf-8")
+                data = parse_markdown(md_text)
+                filled = fill_template(template_text, data)
+                fodt_out = output_path.with_suffix(".fodt")
+                fodt_out.write_text(filled, encoding="utf-8")
+                print("[FODT] Сохранён: {}".format(fodt_out))
+            except Exception as e:
+                print("[FODT] Ошибка: {}".format(e))
+
     return output_path
 
 
@@ -272,13 +306,11 @@ def main() -> None:
         "--mode", default="clean",
         choices=["clean", "llm_context", "auto"],
     )
-    parser.add_argument("--component-name", default="",
-        help="Имя компонента. Если не указано — берётся из docstring модуля или имени файла.")
+    parser.add_argument("--component-name", default="")
     parser.add_argument("--espd-code",      default="")
     parser.add_argument("--cid",            default="")
     parser.add_argument("--marketplace-url", default="")
-    parser.add_argument("--short-description", default="",
-        help="Краткое описание. Если не указано — берётся из docstring модуля.")
+    parser.add_argument("--short-description", default="")
     parser.add_argument("--component-use-category", default="")
     parser.add_argument("--component-type", default="MODULE")
     parser.add_argument("--tags",           default="")
@@ -287,6 +319,12 @@ def main() -> None:
     parser.add_argument("--links",          default="")
     parser.add_argument("--enrich",         action="store_true")
     parser.add_argument("--api-key",        default="")
+    parser.add_argument(
+        "--fodt",
+        default="",
+        metavar="TEMPLATE.fodt",
+        help="Путь к .fodt шаблону. Если указан — генерирует .fodt рядом с .md",
+    )
 
     args = parser.parse_args()
 
@@ -302,6 +340,11 @@ def main() -> None:
 
     authors       = parse_list_arg(args.authors)
     organizations = parse_list_arg(args.organizations)
+
+    # Автоматически получаем хэш текущего коммита
+    commit = get_git_commit_hash()
+    if commit:
+        print("[GIT] Текущий коммит: {}".format(commit))
 
     generated = []
 
@@ -327,6 +370,8 @@ def main() -> None:
             enrich=args.enrich,
             api_key=args.api_key,
             component_name=args.component_name,
+            fodt_template=args.fodt,
+            commit=commit,
         )
         if result is not None:
             generated.append(result)

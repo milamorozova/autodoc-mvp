@@ -44,6 +44,85 @@ def enrich_with_llm(
 
     doc = enrich_idl_with_llm(doc, api_key=api_key, verbose=verbose)
 
+    # Генерируем short_description и tags если они не заполнены
+    doc = enrich_metadata_with_llm(doc, api_key=api_key, verbose=verbose)
+
+    return doc
+
+
+def enrich_metadata_with_llm(
+    doc: ModuleDocModel,
+    api_key: Optional[str] = None,
+    verbose: bool = False,
+) -> ModuleDocModel:
+    """
+    Генерирует short_description и tags через LLM если они не заполнены.
+    """
+    need_description = not getattr(doc, 'short_description', None)
+    need_tags        = not getattr(doc, 'tags', None)
+
+    if not need_description and not need_tags:
+        return doc
+
+    # Собираем контекст: имя модуля, описание из docstring, список публичных сущностей
+    module_name = doc.root.name if doc.root else "unknown"
+    entities = []
+    stack = [doc.root]
+    while stack:
+        node = stack.pop()
+        if node.node_type in ("function", "method", "class") and not node.name.startswith("_"):
+            desc = node.docstring or ""
+            entities.append(f"- {node.node_type} `{node.name}`: {desc[:120]}")
+        stack.extend(node.children)
+
+    entities_text = "\n".join(entities[:20])  # не больше 20 чтобы не раздувать промпт
+
+    lines = [
+        f"Модуль Python: `{module_name}`",
+        f"Публичные сущности:",
+        entities_text,
+        "",
+        "На основе этой информации сгенерируй строго в формате ниже:",
+    ]
+
+    if need_description:
+        lines.append("SHORT_DESCRIPTION: <одно предложение, максимум 300 символов, на русском языке>")
+    if need_tags:
+        lines.append("TAGS: <3-7 тегов через запятую, на русском языке, например: diff, API, сравнение>")
+
+    lines += [
+        "",
+        "Верни ТОЛЬКО строки SHORT_DESCRIPTION и/или TAGS без пояснений.",
+    ]
+
+    prompt = "\n".join(lines)
+
+    if verbose:
+        print("[LLM META] Запрашиваем метаданные ({} символов)...".format(len(prompt)))
+
+    try:
+        response = call_llm(prompt, api_key=api_key)
+    except Exception as e:
+        print("[LLM META] Предупреждение: не удалось получить метаданные: {}".format(e))
+        return doc
+
+    # Парсим ответ
+    for line in response.splitlines():
+        line = line.strip()
+        if need_description and line.startswith("SHORT_DESCRIPTION:"):
+            val = line[len("SHORT_DESCRIPTION:"):].strip()
+            if val:
+                doc.short_description = val[:300]
+                if verbose:
+                    print(f"[LLM META] short_description: {doc.short_description}")
+
+        if need_tags and line.startswith("TAGS:"):
+            val = line[len("TAGS:"):].strip()
+            if val:
+                doc.tags = val
+                if verbose:
+                    print(f"[LLM META] tags: {doc.tags}")
+
     return doc
 
 
@@ -125,12 +204,7 @@ def _strip_code_block(text: str) -> str:
 
 
 def parse_llm_response(raw: str) -> Dict[str, Tuple[str, str]]:
-    """
-    Парсит ответ модели.
-    Возвращает словарь: qualname → (назначение, логика работы).
-    """
     result: Dict[str, Tuple[str, str]] = {}
-
     normalized = re.sub(r'\n\s*---+\s*\n', '\n', raw)
 
     pattern = re.compile(
@@ -158,15 +232,9 @@ def parse_llm_response(raw: str) -> Dict[str, Tuple[str, str]]:
 
 
 def _extract_purpose_and_logic(text: str) -> Tuple[str, str]:
-    """
-    Извлекает пункт 1 (Назначение) и пункт 2 (Логика работы).
-    Возвращает кортеж (назначение, логика).
-    """
-    # --- Назначение ---
     m_purpose = re.search(
         r'1\.\s*\*{0,2}Назначени[еяю][^:]*\*{0,2}[:\s]+(.+?)(?=\n\s*2\.|\Z)',
-        text,
-        re.DOTALL | re.IGNORECASE,
+        text, re.DOTALL | re.IGNORECASE,
     )
     if m_purpose:
         purpose = m_purpose.group(1).strip()
@@ -177,7 +245,6 @@ def _extract_purpose_and_logic(text: str) -> Tuple[str, str]:
             if 0 < end < 400:
                 purpose = purpose[:end + 1]
     else:
-        # Fallback: первая содержательная строка
         purpose = ""
         for line in text.split('\n'):
             line = re.sub(r'\*+', '', line).strip()
@@ -188,11 +255,9 @@ def _extract_purpose_and_logic(text: str) -> Tuple[str, str]:
         if not purpose:
             purpose = text.strip()[:300]
 
-    # --- Логика работы ---
     m_logic = re.search(
         r'2\.\s*\*{0,2}Логика\s+работы[^:]*\*{0,2}[:\s]+(.+?)(?=\n\s*3\.|\Z)',
-        text,
-        re.DOTALL | re.IGNORECASE,
+        text, re.DOTALL | re.IGNORECASE,
     )
     if m_logic:
         logic = m_logic.group(1).strip()
@@ -207,10 +272,6 @@ def _extract_purpose_and_logic(text: str) -> Tuple[str, str]:
 
 
 def apply_enrichment(root: ApiNode, enriched: Dict[str, Tuple[str, str]]) -> None:
-    """
-    Обходит дерево и записывает назначение в docstring,
-    логику работы — в поле logic (если оно есть в модели).
-    """
     stack = [root]
     while stack:
         node = stack.pop()
@@ -220,7 +281,6 @@ def apply_enrichment(root: ApiNode, enriched: Dict[str, Tuple[str, str]]) -> Non
                 purpose, logic = data
                 if purpose:
                     node.docstring = purpose
-                # Записываем логику если поле существует
                 if logic and hasattr(node, 'logic'):
                     node.logic = logic
         stack.extend(node.children)
