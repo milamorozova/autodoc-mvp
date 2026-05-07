@@ -670,3 +670,125 @@ def fill_fodt(md_path: str, tmpl_path: str, out_path: str) -> None:
     result = fill_template(tmpl, data)
     Path(out_path).write_text(result, encoding="utf-8")
     print(f"[FODT] Сохранён: {out_path}")
+
+
+# ---------------------------------------------------------------------------
+# update_fodt_sections — патчинг существующего fodt без пересборки
+# ---------------------------------------------------------------------------
+
+def update_fodt_sections(fodt_path: str, data: dict, changed_qualnames: set) -> bool:
+    """
+    Патчит только секции изменившихся сущностей в существующем fodt.
+    Не трогает секции которые пользователь мог изменить вручную.
+
+    Аргументы:
+        fodt_path       — путь к существующему fodt
+        data            — данные из parse_markdown нового md
+        changed_qualnames — set qualname сущностей которые изменились
+
+    Возвращает True если успешно.
+    """
+    from pathlib import Path as _Path
+
+    path = _Path(fodt_path)
+    if not path.exists():
+        print(f"[FODT UPDATE] Файл не найден: {fodt_path}")
+        return False
+
+    r = path.read_text(encoding="utf-8")
+    updated = False
+
+    # --- Обновляем метаданные (всегда) ---
+    # Version
+    old_ver_pattern = re.compile(
+        r'<text:span text:style-name="T5">Version:</text:span> [^\s<]+'
+    )
+    new_ver = f'<text:span text:style-name="T5">Version:</text:span> {escape(data["version"] or "0.1")}'
+    r, n = old_ver_pattern.subn(new_ver, r, count=1)
+    if n:
+        print("[FODT UPDATE] Version обновлён")
+        updated = True
+
+    # Status
+    old_status_pattern = re.compile(r'Status:</text:span> \S+')
+    new_status = f'Status:</text:span> {escape(data["status"] or "черновик")}'
+    r, n = old_status_pattern.subn(new_status, r, count=1)
+    if n:
+        updated = True
+
+    # Date
+    old_date_pattern = re.compile(
+        r'(<text:span text:style-name="T4"> )([\d\w ]+(?:января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря)\s*\d{4})'
+    )
+    if data.get("date"):
+        r, n = old_date_pattern.subn(r'\g<1>' + escape(data["date"]), r, count=1)
+        if n:
+            updated = True
+
+    # --- Обновляем только изменившиеся функции ---
+    if not changed_qualnames:
+        print("[FODT UPDATE] Нет изменившихся сущностей для обновления")
+        path.write_text(r, encoding="utf-8")
+        return updated
+
+    # Находим функции из data которые изменились
+    changed_fns = [
+        fn for fn in data.get("functions", [])
+        if fn.get("qualname") in changed_qualnames
+        or fn.get("name") in {q.split(".")[-1] for q in changed_qualnames}
+    ]
+
+    print(f"[FODT UPDATE] Обновляем {len(changed_fns)} секций: "
+          f"{', '.join(fn['name'] for fn in changed_fns)}")
+
+    for fn in changed_fns:
+        name = fn["name"]
+        # Ищем блок функции по имени в заголовке
+        # Заголовок вида: 2.1.N. Функция <T29>name</T29>
+        fn_header_pattern = re.compile(
+            r'(<text:h[^>]*>2\.1\.\d+\. (?:Функция|Метод|Класс) '
+            r'<text:span text:style-name="T29">' + re.escape(name) + r'</text:span>'
+            r'</text:h>)'
+        )
+        m = fn_header_pattern.search(r)
+        if not m:
+            print(f"[FODT UPDATE] Секция {name} не найдена в fodt")
+            continue
+
+        # Находим начало list-блока перед заголовком
+        block_start = r.rfind('<text:list text:continue-numbering="true"', 0, m.start())
+        if block_start == -1:
+            print(f"[FODT UPDATE] Начало блока {name} не найдено")
+            continue
+
+        # Находим конец блока — следующий list-continue или начало секции 3
+        # Ищем следующий заголовок функции или конец секции 2
+        next_block = r.find('<text:list text:continue-numbering="true"', m.end())
+        section3 = r.find('__RefHeading___Toc72889_228845717', m.end())  # якорь секции 3
+
+        if next_block == -1 or (section3 != -1 and section3 < next_block):
+            block_end = section3 if section3 != -1 else len(r)
+            # Откатываемся до начала list перед якорем секции 3
+            block_end = r.rfind('<text:list', 0, block_end)
+            if block_end == -1:
+                block_end = section3
+        else:
+            block_end = next_block
+
+        if block_end <= block_start:
+            print(f"[FODT UPDATE] Не удалось определить границы блока {name}")
+            continue
+
+        # Определяем индекс функции в общем списке для правильного номера 2.1.N
+        all_fns = data.get("functions", [])
+        idx = next((i + 1 for i, f in enumerate(all_fns) if f["name"] == name), 1)
+
+        # Генерируем новый XML блока
+        new_block = odf_fn(fn, idx)
+
+        r = r[:block_start] + new_block + r[block_end:]
+        print(f"[FODT UPDATE] Секция {name} обновлена")
+        updated = True
+
+    path.write_text(r, encoding="utf-8")
+    return updated

@@ -16,6 +16,7 @@ from tools.render_llm_context import render_llm_context_document
 from tools.render_spec_md import render_spec_document
 from tools.llm_enricher import enrich_with_llm
 from tools.diff_engine import diff_with_snapshot, save_snapshot
+from tools.git_diff import get_changed_qualnames, update_commit_in_fodt
 
 
 SUPPORTED_SOURCE_EXTENSIONS = {".py", ".c", ".h"}
@@ -234,6 +235,57 @@ def process_file(
     else:
         print("[DIFF] Изменений не обнаружено.")
 
+    # --- Режим update: патчим только изменившиеся секции ---
+    if selected_mode == "update":
+        fodt_out = output_root / f"spec_{doc_model.component_name}.fodt"
+        changed_qualnames, needs_update = get_changed_qualnames(
+            fodt_path=str(fodt_out),
+            source_file=str(file_path),
+            root=doc_model.root,
+            current_commit=commit,
+        )
+        if not needs_update and fodt_out.exists():
+            print("[UPDATE] Изменений нет — fodt актуален")
+            return output_path
+
+        # Обогащаем только изменившиеся сущности через LLM
+        if changed_qualnames and (enrich or os.environ.get("OPENROUTER_API_KEY")):
+            print(f"[UPDATE] Обогащаем {len(changed_qualnames)} изменившихся сущностей...")
+            doc_model = enrich_with_llm(
+                doc_model,
+                api_key=api_key or None,
+                verbose=True,
+                target_qualnames=changed_qualnames,
+            )
+
+        # Пересобираем md (нужен для актуального data)
+        rendered = render_spec_document(doc_model, str(template_path))
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(rendered, encoding="utf-8")
+
+        if fodt_out.exists():
+            # Патчим существующий fodt
+            from tools.fodt_filler import parse_markdown, update_fodt_sections
+            md_text = output_path.read_text(encoding="utf-8")
+            data = parse_markdown(md_text)
+            update_fodt_sections(str(fodt_out), data, changed_qualnames)
+            update_commit_in_fodt(str(fodt_out), commit)
+            print(f"[UPDATE] fodt обновлён: {fodt_out}")
+        else:
+            # fodt ещё не существует — создаём с нуля
+            print("[UPDATE] fodt не найден — создаём с нуля")
+            if fodt_template:
+                from tools.fodt_filler import parse_markdown, fill_template
+                md_text = output_path.read_text(encoding="utf-8")
+                tmpl_text = Path(fodt_template).read_text(encoding="utf-8")
+                data = parse_markdown(md_text)
+                filled = fill_template(tmpl_text, data)
+                fodt_out.write_text(filled, encoding="utf-8")
+                print(f"[FODT] Создан: {fodt_out}")
+
+        save_snapshot(doc_model)
+        return output_path
+
     if enrich and selected_mode != "llm_context":
         llm_targets = diff_result.needs_llm_entities()
         if llm_targets:
@@ -304,7 +356,7 @@ def main() -> None:
     parser.add_argument("--status",        default="черновик")
     parser.add_argument(
         "--mode", default="clean",
-        choices=["clean", "llm_context", "auto"],
+        choices=["clean", "update", "llm_context", "auto"],
     )
     parser.add_argument("--component-name", default="")
     parser.add_argument("--espd-code",      default="")
