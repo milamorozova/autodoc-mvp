@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+# updated for test
 """
 tools/diff_engine.py
 
@@ -26,7 +26,7 @@ from tools.models import ApiNode, ModuleDocModel
 
 
 # ---------------------------------------------------------------------------
-# Структура результата diff
+# Структурааа результата diff
 # ---------------------------------------------------------------------------
 
 @dataclass
@@ -78,8 +78,7 @@ class DiffResult:
 
 def compute_diff(old_root: ApiNode, new_root: ApiNode) -> DiffResult:
     """
-    Сравнивает два дерева ApiNode.
-    Возвращает DiffResult со списками изменений.
+    Вычисляет diff между двумя деревьями
     """
     old_map = _flatten_tree(old_root)
     new_map = _flatten_tree(new_root)
