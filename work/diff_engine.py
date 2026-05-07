@@ -83,8 +83,9 @@ def compute_diff(old_root: ApiNode, new_root: ApiNode) -> DiffResult:
     """
     old_map = _flatten_tree(old_root)
     new_map = _flatten_tree(new_root)
+    # compute diff logic here
 
-    result = DiffResult()
+    result = DiffResult() #результат
 
     all_qualnames = set(old_map) | set(new_map)
 
