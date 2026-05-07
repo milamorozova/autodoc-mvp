@@ -2,6 +2,7 @@ from __future__ import annotations
 # updated for test
 """
 tools/diff_engine.py
+#второй апдейт для теста
 
 Сравнивает два дерева ApiNode (старое и новое) и возвращает список EntityDiff —
 по одному на каждую изменившуюся или новую сущность.
@@ -419,4 +420,4 @@ def _dict_to_node(d: dict) -> ApiNode:
             for e in d.get("exceptions", [])
         ],
         children=[_dict_to_node(c) for c in d.get("children", [])],
-    )
+    )# test update mode
