@@ -4,7 +4,7 @@ from tools.models import ApiNode
 
 
 def choose_mode(mode: str) -> str:
-    allowed = {"clean", "llm_context", "auto"}
+    allowed = {"clean", "update", "llm_context", "auto"}
     if mode not in allowed:
         return "clean"
     return mode

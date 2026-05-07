@@ -236,6 +236,7 @@ def process_file(
         print("[DIFF] Изменений не обнаружено.")
 
     # --- Режим update: патчим только изменившиеся секции ---
+    output_path = make_output_path(output_root, doc_model.component_name, selected_mode)
     if selected_mode == "update":
         fodt_out = output_root / f"spec_{doc_model.component_name}.fodt"
         changed_qualnames, needs_update = get_changed_qualnames(
@@ -246,7 +247,7 @@ def process_file(
         )
         if not needs_update and fodt_out.exists():
             print("[UPDATE] Изменений нет — fodt актуален")
-            return output_path
+            return fodt_out.with_suffix(".md")
 
         # Обогащаем только изменившиеся сущности через LLM
         if changed_qualnames and (enrich or os.environ.get("OPENROUTER_API_KEY")):
@@ -310,7 +311,6 @@ def process_file(
     else:
         rendered = render_spec_document(doc_model, str(template_path))
 
-    output_path = make_output_path(output_root, doc_model.component_name, selected_mode)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(rendered, encoding="utf-8")
 

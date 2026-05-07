@@ -125,9 +125,11 @@ def find_changed_nodes(root: ApiNode, changed_lines: Set[int]) -> List[ApiNode]:
     while stack:
         node = stack.pop()
         if node.node_type in ("function", "method", "class"):
-            node_lines = set(range(node.lineno, (node.end_lineno or node.lineno) + 1))
-            if node_lines & changed_lines:  # пересечение
-                changed_nodes.append(node)
+            # пропускаем приватные сущности
+            if not node.name.startswith("_"):
+                node_lines = set(range(node.lineno, (node.end_lineno or node.lineno) + 1))
+                if node_lines & changed_lines:  # пересечение
+                    changed_nodes.append(node)
         stack.extend(node.children)
 
     return changed_nodes

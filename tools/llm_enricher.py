@@ -31,6 +31,9 @@ def enrich_with_llm(
 
     if verbose:
         print("[LLM] Получен ответ ({} символов).".format(len(raw_response)))
+        print("[LLM] Первые 500 символов ответа:")
+        print(raw_response[:500])
+        print("---")
 
     enriched = parse_llm_response(raw_response)
 
