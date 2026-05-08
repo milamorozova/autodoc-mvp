@@ -17,6 +17,11 @@ from tools.render_spec_md import render_spec_document
 from tools.llm_enricher import enrich_with_llm
 from tools.diff_engine import diff_with_snapshot, save_snapshot
 from tools.git_diff import get_changed_qualnames, update_commit_in_fodt
+from tools.fodt_registry import (
+    save_fodt_hash, check_fodt_changed, backup_fodt,
+    find_user_changed_sections, merge_section_with_llm,
+    extract_function_sections,
+)
 
 
 SUPPORTED_SOURCE_EXTENSIONS = {".py", ".c", ".h"}
@@ -176,6 +181,19 @@ def _name_from_docstring(tree) -> str:
     return ""
 
 
+
+
+def _get_last_pipeline_fodt(fodt_path: str) -> str:
+    """
+    Возвращает содержимое fodt из последнего запуска пайплайна.
+    Если есть .bak — читаем его (он был сохранён до ручных правок).
+    Иначе читаем текущий файл.
+    """
+    bak_path = fodt_path + ".bak"
+    if Path(bak_path).exists():
+        return Path(bak_path).read_text(encoding="utf-8")
+    return Path(fodt_path).read_text(encoding="utf-8")
+
 def process_file(
     file_path: Path,
     source_root: Path,
@@ -265,12 +283,75 @@ def process_file(
         output_path.write_text(rendered, encoding="utf-8")
 
         if fodt_out.exists():
-            # Патчим существующий fodt
-            from tools.fodt_filler import parse_markdown, update_fodt_sections
-            md_text = output_path.read_text(encoding="utf-8")
-            data = parse_markdown(md_text)
-            update_fodt_sections(str(fodt_out), data, changed_qualnames)
+            # Проверяем ручные изменения пользователя
+            user_changed = check_fodt_changed(str(fodt_out))
+            user_changed_sections = []
+
+            if user_changed:
+                print("[UPDATE] Пользователь изменил fodt вручную — сохраняем резервную копию")
+                backup_fodt(str(fodt_out))
+
+                # Читаем текущую (изменённую) версию fodt
+                current_fodt = fodt_out.read_text(encoding="utf-8")
+
+                # Генерируем версию пайплайна (ещё не записываем)
+                from tools.fodt_filler import parse_markdown, update_fodt_sections
+                md_text = output_path.read_text(encoding="utf-8")
+                data = parse_markdown(md_text)
+
+                # Применяем изменения пайплайна во временную копию
+                import tempfile, shutil
+                tmp_fodt = fodt_out.with_suffix(".tmp.fodt")
+                shutil.copy(str(fodt_out), str(tmp_fodt))
+                update_fodt_sections(str(tmp_fodt), data, changed_qualnames)
+
+                pipeline_fodt = tmp_fodt.read_text(encoding="utf-8")
+
+                # Находим пересечение: секции которые изменил пользователь
+                # И которые также меняет пайплайн
+                user_edited = find_user_changed_sections(
+                    _get_last_pipeline_fodt(str(fodt_out)),
+                    current_fodt,
+                )
+                pipeline_changes = {fn["name"] for fn in data.get("functions", [])
+                                    if fn.get("qualname") in changed_qualnames
+                                    or fn.get("name") in {q.split(".")[-1] for q in changed_qualnames}}
+
+                overlap = set(user_edited) & pipeline_changes
+
+                if overlap:
+                    print(f"[UPDATE] Пересечение правок в секциях: {', '.join(overlap)}")
+                    # Для каждой пересекающейся секции — merge через LLM
+                    user_secs = extract_function_sections(current_fodt)
+                    pipe_secs = extract_function_sections(pipeline_fodt)
+
+                    for fn_name in overlap:
+                        if fn_name in user_secs and fn_name in pipe_secs:
+                            merged = merge_section_with_llm(
+                                fn_name,
+                                user_secs[fn_name],
+                                pipe_secs[fn_name],
+                                api_key=api_key or None,
+                            )
+                            # Применяем merged текст как новое описание функции
+                            for fn in data.get("functions", []):
+                                if fn["name"] == fn_name:
+                                    fn["description"] = merged
+                                    break
+                else:
+                    print("[UPDATE] Пересечений нет — пользовательские правки сохранятся")
+
+                tmp_fodt.unlink(missing_ok=True)
+
+            else:
+                from tools.fodt_filler import parse_markdown, update_fodt_sections
+                md_text = output_path.read_text(encoding="utf-8")
+                data = parse_markdown(md_text)
+
+            if not user_changed:
+                update_fodt_sections(str(fodt_out), data, changed_qualnames)
             update_commit_in_fodt(str(fodt_out), commit)
+            save_fodt_hash(str(fodt_out), commit)
             print(f"[UPDATE] fodt обновлён: {fodt_out}")
         else:
             # fodt ещё не существует — создаём с нуля
@@ -331,6 +412,7 @@ def process_file(
                 filled = fill_template(template_text, data)
                 fodt_out = output_path.with_suffix(".fodt")
                 fodt_out.write_text(filled, encoding="utf-8")
+                save_fodt_hash(str(fodt_out), commit)
                 print("[FODT] Сохранён: {}".format(fodt_out))
             except Exception as e:
                 print("[FODT] Ошибка: {}".format(e))
