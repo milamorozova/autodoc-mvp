@@ -1,7 +1,7 @@
 from __future__ import annotations
 # updated for test
 # debug test
-#еще тестик
+#тест тестович 
 """
 tools/diff_engine.py
 #второй апдейт для теста
@@ -81,7 +81,7 @@ class DiffResult:
 
 def compute_diff(old_root: ApiNode, new_root: ApiNode) -> DiffResult:
     """
-    Вычисляет diff'ы между 2мя деревьями
+    Определяет diff'ы между 2мя деревьями
     """
     old_map = _flatten_tree(old_root)
     new_map = _flatten_tree(new_root)
@@ -426,3 +426,4 @@ def _dict_to_node(d: dict) -> ApiNode:
         children=[_dict_to_node(c) for c in d.get("children", [])],
     )# test update mode
 # registry test
+# merge test
