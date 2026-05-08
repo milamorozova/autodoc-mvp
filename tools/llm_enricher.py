@@ -31,9 +31,6 @@ def enrich_with_llm(
 
     if verbose:
         print("[LLM] Получен ответ ({} символов).".format(len(raw_response)))
-        print("[LLM] Первые 500 символов ответа:")
-        print(raw_response[:500])
-        print("---")
 
     enriched = parse_llm_response(raw_response)
 
@@ -210,6 +207,7 @@ def parse_llm_response(raw: str) -> Dict[str, Tuple[str, str]]:
     result: Dict[str, Tuple[str, str]] = {}
     normalized = re.sub(r'\n\s*---+\s*\n', '\n', raw)
 
+    # Формат 1: ### Entity `qualname`
     pattern = re.compile(
         r'###\s+Entity\s+`([^`]+)`\s*\n(.*?)(?=###\s+Entity\s+`|\Z)',
         re.DOTALL,
@@ -220,6 +218,7 @@ def parse_llm_response(raw: str) -> Dict[str, Tuple[str, str]]:
         if qualname and description:
             result[qualname] = _extract_purpose_and_logic(description)
 
+    # Формат 2: ### `qualname`
     if not result:
         pattern2 = re.compile(
             r'###\s+`([^`]+)`\s*\n(.*?)(?=###\s+`|\Z)',
@@ -230,6 +229,38 @@ def parse_llm_response(raw: str) -> Dict[str, Tuple[str, str]]:
             description = match.group(2).strip()
             if qualname and description:
                 result[qualname] = _extract_purpose_and_logic(description)
+
+    # Формат 3: JSON {"entities": [{"name": ..., "description": {...}}]}
+    if not result:
+        try:
+            import json
+            # Убираем markdown блок если есть
+            json_text = re.sub(r'```json\s*', '', normalized)
+            json_text = re.sub(r'```\s*', '', json_text).strip()
+            data = json.loads(json_text)
+            entities = data.get("entities", [])
+            for entity in entities:
+                name = entity.get("name", "")
+                desc = entity.get("description", {})
+                if isinstance(desc, dict):
+                    purpose = (desc.get("назначение") or desc.get("purpose") or
+                               desc.get("Назначение") or "")
+                    logic   = (desc.get("логика_работы") or desc.get("logic") or
+                               desc.get("Логика работы") or "")
+                elif isinstance(desc, str):
+                    purpose = desc
+                    logic   = ""
+                else:
+                    continue
+                if name and purpose:
+                    # Ищем qualname в тексте или строим из имени
+                    qualname = entity.get("qualname", name)
+                    result[qualname] = (
+                        re.sub(r'\s+', ' ', str(purpose)).strip(),
+                        re.sub(r'\s+', ' ', str(logic)).strip(),
+                    )
+        except Exception:
+            pass
 
     return result
 
