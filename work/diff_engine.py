@@ -194,7 +194,7 @@ def diff_with_snapshot(
     snapshot_dir: str = "snapshots",
 ) -> Tuple[DiffResult, bool]:
     """
-    Сравнивает текущее дерево со снапшотом.
+    Производит сравнение текущего дерева со снапшотом.
     Возвращает (DiffResult, is_first_run).
     is_first_run=True если снапшот не найден (первый запуск).
     """
@@ -427,3 +427,4 @@ def _dict_to_node(d: dict) -> ApiNode:
     )# test update mode
 # registry test
 # merge test
+# hook test
