@@ -87,6 +87,7 @@ def compute_diff(old_root: ApiNode, new_root: ApiNode) -> DiffResult:
     new_map = _flatten_tree(new_root)
     # compute diff logic here
 #пупупу
+#коммент тестовый
 
     result = DiffResult() #результат
 
