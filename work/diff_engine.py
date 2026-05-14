@@ -79,7 +79,7 @@ class DiffResult:
 # Основная функция сравнения
 # ---------------------------------------------------------------------------
 
-def compute_diff(old_root: ApiNode, new_root: ApiNode) -> DiffResult:
+def compute_diff(old_root: ApiNode, new_root: ApiNode, verbose: bool = False) -> DiffResult:
     """
     Определяет diff'ы между 2мя деревьями
     """
