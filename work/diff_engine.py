@@ -90,6 +90,7 @@ def compute_diff(old_root: ApiNode, new_root: ApiNode, verbose: bool = False) ->
 #test3
 #test4
 #test5
+#test6
     result = DiffResult()  # результат
 
     all_qualnames = set(old_map) | set(new_map)
