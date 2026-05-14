@@ -90,6 +90,9 @@ def compute_diff(old_root: ApiNode, new_root: ApiNode, verbose: bool = False) ->
 #коммент тестовый
 
     result = DiffResult() #результат
+    result = DiffResult()
+# body change test
+print(f"[DEBUG] computing diff for {len(all_qualnames)} entities") if False else None
 
     all_qualnames = set(old_map) | set(new_map)
 
