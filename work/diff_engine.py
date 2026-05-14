@@ -90,7 +90,7 @@ def compute_diff(old_root: ApiNode, new_root: ApiNode, verbose: bool = False) ->
 #test3
 #test4
 #test5
-#test6
+#test66
 #test7
     result = DiffResult()  # результат
 
@@ -436,3 +436,4 @@ def _dict_to_node(d: dict) -> ApiNode:
 
 
     # test body_changed
+    # test body_changed 2
