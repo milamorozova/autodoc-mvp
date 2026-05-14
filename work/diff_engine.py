@@ -433,7 +433,9 @@ def _dict_to_node(d: dict) -> ApiNode:
 # merge test
 # hook test
 
-
+def get_summary(doc) -> str:
+    """Returns a short summary of the document."""
+    return str(doc)
 
     # test body_changed
     # test body_changed 2
