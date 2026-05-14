@@ -91,6 +91,7 @@ def compute_diff(old_root: ApiNode, new_root: ApiNode, verbose: bool = False) ->
 #test4
 #test5
 #test6
+#test7
     result = DiffResult()  # результат
 
     all_qualnames = set(old_map) | set(new_map)
@@ -434,3 +435,4 @@ def _dict_to_node(d: dict) -> ApiNode:
 
 
 
+    # test body_changed
