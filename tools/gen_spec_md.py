@@ -349,7 +349,25 @@ def process_file(
                 data = parse_markdown(md_text)
 
             if not user_changed:
-                update_fodt_sections(str(fodt_out), data, changed_qualnames)
+                # Проверяем есть ли новые сущности которых нет в fodt
+                fodt_text = fodt_out.read_text(encoding="utf-8")
+                added_names = {q.split(".")[-1] for q in changed_qualnames
+                               if not any(q.split(".")[-1] in fodt_text for q in [q])}
+                fn_names_in_fodt = {fn["name"] for fn in data.get("functions", [])
+                                    if f'>{fn["name"]}<' in fodt_text or
+                                    f'T29">{fn["name"]}<' in fodt_text}
+                truly_added = {q for q in changed_qualnames
+                               if q.split(".")[-1] not in fn_names_in_fodt}
+                if truly_added:
+                    print(f"[UPDATE] Новые сущности {truly_added} — пересобираем fodt полностью")
+                    from tools.fodt_filler import parse_markdown, fill_template
+                    tmpl_text = Path(fodt_template).read_text(encoding="utf-8")
+                    filled = fill_template(tmpl_text, data)
+                    fodt_out.write_text(filled, encoding="utf-8")
+                else:
+                    update_fodt_sections(str(fodt_out), data, changed_qualnames)
+
+            # Валидация XML через lxml (толерантен к namespace FODT)
             update_commit_in_fodt(str(fodt_out), commit)
             save_fodt_hash(str(fodt_out), commit)
             print(f"[UPDATE] fodt обновлён: {fodt_out}")

@@ -253,7 +253,6 @@ def parse_llm_response(raw: str) -> Dict[str, Tuple[str, str]]:
                 else:
                     continue
                 if name and purpose:
-                    # Ищем qualname в тексте или строим из имени
                     qualname = entity.get("qualname", name)
                     result[qualname] = (
                         re.sub(r'\s+', ' ', str(purpose)).strip(),
@@ -301,6 +300,10 @@ def _extract_purpose_and_logic(text: str) -> Tuple[str, str]:
             logic = logic[:800].rsplit('. ', 1)[0] + '.'
     else:
         logic = ""
+
+    # Убираем артефакт --- в конце текста (иногда добавляется LLM)
+    purpose = re.sub(r'\s*-{2,}\s*$', '', purpose).strip()
+    logic   = re.sub(r'\s*-{2,}\s*$', '', logic).strip()
 
     return (purpose, logic)
 

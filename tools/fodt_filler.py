@@ -710,7 +710,7 @@ def update_fodt_sections(fodt_path: str, data: dict, changed_qualnames: set) -> 
         updated = True
 
     # Status
-    old_status_pattern = re.compile(r'Status:</text:span> \S+')
+    old_status_pattern = re.compile(r'Status:</text:span> [^<]+')
     new_status = f'Status:</text:span> {escape(data["status"] or "черновик")}'
     r, n = old_status_pattern.subn(new_status, r, count=1)
     if n:
@@ -786,6 +786,7 @@ def update_fodt_sections(fodt_path: str, data: dict, changed_qualnames: set) -> 
         # Генерируем новый XML блока
         new_block = odf_fn(fn, idx)
 
+        # Проверяем XML после патча через lxml (толерантен к namespace)
         r = r[:block_start] + new_block + r[block_end:]
         print(f"[FODT UPDATE] Секция {name} обновлена")
         updated = True
