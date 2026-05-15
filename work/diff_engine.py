@@ -437,3 +437,7 @@ def _dict_to_node(d: dict) -> ApiNode:
     # test body_changed 2
     # test body_changed
     # timing test
+
+def get_version() -> str:
+    """Returns the current version of the diff engine."""
+    return "0.1.0"
