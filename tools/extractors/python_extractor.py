@@ -7,6 +7,153 @@ from tools.extractors.base import BaseExtractor
 from tools.models import ApiNode, ExceptionInfo, ParameterInfo, SignatureInfo
 
 
+import re as _re
+
+def _strip_annotated(annotation: str) -> str:
+    """Убирает Annotated[T, Doc(...)] оставляя только T."""
+    if not annotation or not annotation.startswith("Annotated["):
+        return annotation
+    # Берём первый аргумент — всё до первой запятой на верхнем уровне скобок
+    inner = annotation[len("Annotated["):]
+    depth = 0
+    for i, ch in enumerate(inner):
+        if ch in "([{":
+            depth += 1
+        elif ch in ")]}":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            return inner[:i].strip()
+    return annotation
+
+
+import re as _re
+
+def _strip_annotated(annotation: str) -> str:
+    """Убирает Annotated[T, Doc(...)] оставляя только T."""
+    if not annotation or not annotation.startswith("Annotated["):
+        return annotation
+    # Берём первый аргумент — всё до первой запятой на верхнем уровне скобок
+    inner = annotation[len("Annotated["):]
+    depth = 0
+    for i, ch in enumerate(inner):
+        if ch in "([{":
+            depth += 1
+        elif ch in ")]}":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            return inner[:i].strip()
+    return annotation
+
+
+# Словарь перевода стандартных маркеров в docstring
+_DOCSTRING_TRANSLATIONS = {
+    ".. deprecated::": "Устарело:",
+    ".. deprecated ":  "Устарело:",
+    "deprecated":      "Устарело",
+    "Deprecated":      "Устарело",
+    ".. note::":       "Примечание:",
+    ".. note ":        "Примечание:",
+    "Note:":           "Примечание:",
+    "NOTE:":           "Примечание:",
+    ".. warning::":    "Внимание:",
+    ".. warning ":     "Внимание:",
+    "Warning:":        "Внимание:",
+    "WARNING:":        "Внимание:",
+    ".. versionadded::":   "Добавлено в версии:",
+    ".. versionchanged::": "Изменено в версии:",
+    ".. seealso::":    "См. также:",
+    "See also:":       "См. также:",
+    "See Also:":       "См. также:",
+    "Raises:":         "Исключения:",
+    "Returns:":        "Возвращает:",
+    "Parameters:":     "Параметры:",
+    "Args:":           "Параметры:",
+    "Example:":        "Пример:",
+    "Examples:":       "Примеры:",
+    "Todo:":           "TODO:",
+}
+
+def _normalize_docstring(text: str) -> str:
+    """Переводит стандартные английские маркеры docstring на русский.
+    Не трогает текст внутри URL (в скобках после markdown-ссылки).
+    """
+    if not text:
+        return text
+    import re
+    # Разбиваем текст на части: URL и не-URL
+    # Markdown ссылки вида [текст](url) — URL не трогаем
+    parts = re.split(r'(\(https?://[^\)]+\))', text)
+    result = []
+    for i, part in enumerate(parts):
+        if part.startswith('(http'):
+            result.append(part)  # URL — не трогаем
+        else:
+            for eng, rus in _DOCSTRING_TRANSLATIONS.items():
+                part = part.replace(eng, rus)
+            result.append(part)
+    return "".join(result).strip()
+
+
+def _build_docstring(node) -> str:
+    """Собирает docstring: берёт первый абзац стандартного docstring.
+    Если docstring нет или он короткий — собирает Doc() из аннотаций параметров.
+    """
+    import ast as _ast
+    base = _ast.get_docstring(node) or ""
+    # Берём только первый абзац до ## Example, ## Parameters и т.д.
+    if base:
+        # Обрезаем по первому абзацу если после него идёт служебный маркер
+        if "\n\n" in base:
+            first_para = base[:base.index("\n\n")].strip()
+            rest = base[base.index("\n\n"):].lstrip()
+            markers = ["## Example", "## Parameters", "##", "Read more", "See also", "Note:", "Warning:"]
+            if any(rest.startswith(m) for m in markers):
+                base = first_para
+        if base:
+            return _normalize_docstring(base)
+    # Если основного docstring нет — берём из Doc() аннотаций
+    param_docs = _collect_param_docs(node)
+    if param_docs:
+        return _normalize_docstring(param_docs)
+    return None
+
+
+def _extract_doc_from_annotated(annotation_str: str) -> str:
+    """Извлекает текст из Doc('...') внутри Annotated[T, Doc('...')]."""
+    if not annotation_str or "Doc(" not in annotation_str:
+        return ""
+    import re
+    # Ищем Doc('...') или Doc("...")
+    m = re.search('Doc[(]([^)]{1,500})[)]', annotation_str)
+    if m:
+        return m.group(1).strip()
+    return ""
+
+def _collect_param_docs(node) -> str:
+    """Собирает описания параметров из Annotated[T, Doc(...)] в одну строку."""
+    import ast as _ast
+    lines = []
+    if not hasattr(node, "args"):
+        return ""
+    args = node.args
+    all_args = args.posonlyargs + args.args + args.kwonlyargs
+    if args.vararg:
+        all_args.append(args.vararg)
+    if args.kwarg:
+        all_args.append(args.kwarg)
+    for arg in all_args:
+        if arg.annotation is None:
+            continue
+        ann_str = _ast.unparse(arg.annotation)
+        doc = _extract_doc_from_annotated(ann_str)
+        if doc and arg.arg not in ("self", "cls"):
+            # Берём только первое предложение чтобы не раздувать
+            first_sentence = doc.split(".")[0].strip()
+            if first_sentence:
+                lines.append(f"{arg.arg}: {first_sentence}")
+    return "; ".join(lines)
+
+
 class PythonExtractor(BaseExtractor):
     def build_tree(self, source: str, file_path: str, module_name: str) -> ApiNode:
         tree = ast.parse(source)
@@ -19,7 +166,7 @@ class PythonExtractor(BaseExtractor):
             end_lineno=max(1, len(source.splitlines())),
             file_path=file_path,
             language="python",
-            docstring=ast.get_docstring(tree),
+            docstring=_build_docstring(tree),
         )
 
         for node in tree.body:
@@ -65,7 +212,7 @@ class PythonExtractor(BaseExtractor):
             end_lineno=getattr(node, "end_lineno", node.lineno),
             file_path=file_path,
             language="python",
-            docstring=ast.get_docstring(node),
+            docstring=_build_docstring(node),
             decorators=self._collect_decorators(node.decorator_list),
         )
 
@@ -99,7 +246,7 @@ class PythonExtractor(BaseExtractor):
             file_path=file_path,
             language="python",
             signature=self._build_signature(node),
-            docstring=ast.get_docstring(node),
+            docstring=_build_docstring(node),
             decorators=self._collect_decorators(node.decorator_list),
             exceptions=self._collect_raises(node),
         )
@@ -210,7 +357,10 @@ class PythonExtractor(BaseExtractor):
         if expr is None:
             return None
         try:
-            return ast.unparse(expr)
+            result = ast.unparse(expr)
+            # Убираем Annotated[T, Doc('...')] -> T
+            result = _strip_annotated(result)
+            return result
         except Exception:
             return None
 

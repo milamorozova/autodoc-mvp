@@ -36,7 +36,7 @@ class EntityDiff:
     change_type: str             # added | removed | signature_changed |
                                  # docstring_changed | body_changed | unchanged
     is_complex: bool             # на основе analyze_complexity
-    needs_llm: bool              # итоговое решение
+    needs_llm: bool              # итоговое решениеее
     old_node: Optional[ApiNode] = None
     new_node: Optional[ApiNode] = None
 
@@ -100,7 +100,7 @@ def compute_diff(old_root: ApiNode, new_root: ApiNode) -> DiffResult:
                 node_type=new_node.node_type,
                 change_type="added",
                 is_complex=complexity,
-                needs_llm=True,
+                needs_llm=_decide_needs_llm("added", complexity, new_node.docstring or ""),
                 old_node=None,
                 new_node=new_node,
             ))
@@ -159,7 +159,10 @@ def save_snapshot(doc: ModuleDocModel, snapshot_dir: str = "snapshots") -> Path:
     snap_path = Path(snapshot_dir)
     snap_path.mkdir(exist_ok=True)
 
-    file_name = doc.component_name.replace(".", "_") + ".json"
+    # Используем имя файла из source_path чтобы разные файлы не перезаписывали снапшоты
+    import os
+    base = os.path.splitext(os.path.basename(doc.source_path))[0]
+    file_name = base.replace(".", "_") + ".json"
     out_path  = snap_path / file_name
 
     data = _node_to_dict(doc.root)
@@ -194,7 +197,9 @@ def diff_with_snapshot(
     Возвращает (DiffResult, is_first_run).
     is_first_run=True если снапшот не найден (первый запуск).
     """
-    old_root = load_snapshot(doc.component_name, snapshot_dir)
+    import os
+    snap_name = os.path.splitext(os.path.basename(doc.source_path))[0]
+    old_root = load_snapshot(snap_name, snapshot_dir)
 
     if old_root is None:
         # Первый запуск — всё считается "added"
@@ -206,7 +211,7 @@ def diff_with_snapshot(
                 node_type=node.node_type,
                 change_type="added",
                 is_complex=complexity,
-                needs_llm=True,
+                needs_llm=_decide_needs_llm("added", complexity, node.docstring or ""),
                 old_node=None,
                 new_node=node,
             ))
@@ -333,10 +338,18 @@ def _is_complex(node: ApiNode) -> bool:
     )
 
 
-def _decide_needs_llm(change_type: str, is_complex: bool) -> bool:
+DOCSTRING_SUFFICIENT_LENGTH = 500
+
+def _decide_needs_llm(change_type: str, is_complex: bool, docstring: str = "") -> bool:
     """
     Итоговое решение: нужен ли LLM для данного изменения.
     """
+    doc = docstring.strip()
+    if doc and len(doc) >= DOCSTRING_SUFFICIENT_LENGTH:
+        return False
+    # Если есть осмысленный docstring (не заглушка) — LLM не нужен
+    if doc and len(doc) >= 20 and not doc.startswith("Элемент"):
+        return False
     if change_type == "added":
         return True
     if change_type in ("signature_changed", "docstring_changed"):

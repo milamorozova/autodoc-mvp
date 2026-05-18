@@ -108,7 +108,7 @@ def compute_diff(old_root: ApiNode, new_root: ApiNode, verbose: bool = False) ->
                 node_type=new_node.node_type,
                 change_type="added",
                 is_complex=complexity,
-                needs_llm=True,
+                needs_llm=_decide_needs_llm("added", complexity, new_node.docstring or ""),
                 old_node=None,
                 new_node=new_node,
             ))
@@ -214,7 +214,7 @@ def diff_with_snapshot(
                 node_type=node.node_type,
                 change_type="added",
                 is_complex=complexity,
-                needs_llm=True,
+                needs_llm=_decide_needs_llm("added", complexity, node.docstring or ""),
                 old_node=None,
                 new_node=node,
             ))
@@ -341,10 +341,20 @@ def _is_complex(node: ApiNode) -> bool:
     )
 
 
-def _decide_needs_llm(change_type: str, is_complex: bool) -> bool:
+# Порог длины docstring — если больше, LLM не нужен (docstring достаточно полный)
+DOCSTRING_SUFFICIENT_LENGTH = 500
+
+def _decide_needs_llm(change_type: str, is_complex: bool, docstring: str = "") -> bool:
     """
     Итоговое решение: нужен ли LLM для данного изменения.
+    Если docstring длиннее DOCSTRING_SUFFICIENT_LENGTH — используем его напрямую.
     """
+    doc = docstring.strip()
+    if doc and len(doc) >= DOCSTRING_SUFFICIENT_LENGTH:
+        return False
+    # Если есть осмысленный docstring (не заглушка) — LLM не нужен
+    if doc and len(doc) >= 20 and not doc.startswith("Элемент"):
+        return False
     if change_type == "added":
         return True
     if change_type in ("signature_changed", "docstring_changed"):
