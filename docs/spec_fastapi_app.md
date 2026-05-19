@@ -10,9 +10,9 @@
 | **CID** | `—` |
 | **Marketplace URL** | — |
 | **Статус** | черновик |
-| **Дата изменения** | 18 мая 2026 |
+| **Дата изменения** | 19 мая 2026 |
 | **Версия** | 0.1 |
-| **Коммит** | `53b512a` |
+| **Коммит** | `c5281a9` |
 | **Теги** | API, веб-сервер, маршрутизация, обработка ошибок, события, middleware, WebSocket |
 | **Источник кода** | `work/fastapi_app.py` |
 
@@ -88,301 +88,338 @@
 
 ```idl
 // Forward declarations for complex types
-// Assuming these types are defined elsewhere or can be represented as simple structures.
-// For simplicity, we'll use basic structures for dict and list elements.
+struct FastAPIData;
+struct ASGIAppData;
+struct APIRouteData;
+struct DependsData;
+struct EnumData;
+struct ResponseData;
+struct DefaultPlaceholderData;
+struct BaseRouteData;
+struct IncExData;
 
-// Placeholder for ASGIApp
-typedef [uuid(00000000-0000-0000-0000-000000000001)] struct ASGIApp {};
+// Interface for FastAPI
+[object, uuid(00000000-0000-0000-0000-000000000001), helpstring("IFastAPI Interface")]
+interface IFastAPI : IUnknown
+{
+    [helpstring("Builds the middleware stack.")]
+    HRESULT build_middleware_stack([out, retval] ASGIAppData** ppApp);
 
-// Placeholder for Callable
-typedef [uuid(00000000-0000-0000-0000-000000000002)] struct Callable {};
+    [helpstring("Returns the OpenAPI schema.")]
+    HRESULT openapi([out, retval] VARIANT* pRetVal); // VARIANT to handle dict[str, Any]
 
-// Placeholder for Any
-typedef [uuid(00000000-0000-0000-0000-000000000003)] struct AnyType {};
+    [helpstring("Sets up the FastAPI application.")]
+    HRESULT setup();
 
-// Placeholder for Depends
-typedef [uuid(00000000-0000-0000-0000-000000000004)] struct Depends {};
+    [helpstring("Adds an API route.")]
+    HRESULT add_api_route(
+        [in] BSTR path,
+        [in] IUnknown* endpoint, // Callable[..., Any] represented as IUnknown
+        [in] VARIANT response_model, // Any
+        [in] long status_code,
+        [in] SAFARRAY(BSTR) tags,
+        [in] SAFARRAY(DependsData*) dependencies,
+        [in] BSTR summary,
+        [in] BSTR description,
+        [in] BSTR response_description,
+        [in] VARIANT responses, // dict[int | str, dict[str, Any]]
+        [in] VARIANT_BOOL deprecated,
+        [in] SAFARRAY(BSTR) methods,
+        [in] BSTR operation_id,
+        [in] IncExData* response_model_include,
+        [in] IncExData* response_model_exclude,
+        [in] VARIANT_BOOL response_model_by_alias,
+        [in] VARIANT_BOOL response_model_exclude_unset,
+        [in] VARIANT_BOOL response_model_exclude_defaults,
+        [in] VARIANT_BOOL response_model_exclude_none,
+        [in] VARIANT_BOOL include_in_schema,
+        [in] ResponseData* response_class, // type[Response]
+        [in] BSTR name,
+        [in] VARIANT openapi_extra, // dict[str, Any]
+        [in] IUnknown* generate_unique_id_function // Callable[[routing.APIRoute], str]
+    );
 
-// Placeholder for Enum
-typedef [uuid(00000000-0000-0000-0000-000000000005)] struct EnumType {};
+    [helpstring("Decorator for API routes.")]
+    HRESULT api_route(
+        [in] BSTR path,
+        [in] VARIANT response_model, // Any
+        [in] long status_code,
+        [in] SAFARRAY(BSTR) tags,
+        [in] SAFARRAY(DependsData*) dependencies,
+        [in] BSTR summary,
+        [in] BSTR description,
+        [in] BSTR response_description,
+        [in] VARIANT responses, // dict[int | str, dict[str, Any]]
+        [in] VARIANT_BOOL deprecated,
+        [in] SAFARRAY(BSTR) methods,
+        [in] BSTR operation_id,
+        [in] IncExData* response_model_include,
+        [in] IncExData* response_model_exclude,
+        [in] VARIANT_BOOL response_model_by_alias,
+        [in] VARIANT_BOOL response_model_exclude_unset,
+        [in] VARIANT_BOOL response_model_exclude_defaults,
+        [in] VARIANT_BOOL response_model_exclude_none,
+        [in] VARIANT_BOOL include_in_schema,
+        [in] ResponseData* response_class, // type[Response]
+        [in] BSTR name,
+        [in] VARIANT openapi_extra, // dict[str, Any]
+        [in] IUnknown* generate_unique_id_function // Callable[[routing.APIRoute], str]
+    );
 
-// Placeholder for IncEx
-typedef [uuid(00000000-0000-0000-0000-000000000006)] struct IncEx {};
+    [helpstring("Adds a WebSocket API route.")]
+    HRESULT add_api_websocket_route(
+        [in] BSTR path,
+        [in] IUnknown* endpoint, // Callable[..., Any]
+        [in] BSTR name,
+        [in] SAFARRAY(DependsData*) dependencies
+    );
 
-// Placeholder for Response
-typedef [uuid(00000000-0000-0000-0000-000000000007)] struct Response {};
+    [helpstring("Decorator for WebSocket routes.")]
+    HRESULT websocket(
+        [in] BSTR path,
+        [in] BSTR name,
+        [in] SAFARRAY(DependsData*) dependencies
+    );
 
-// Placeholder for DefaultPlaceholder
-typedef [uuid(00000000-0000-0000-0000-000000000008)] struct DefaultPlaceholder {};
+    [helpstring("Includes another router.")]
+    HRESULT include_router(
+        [in] IUnknown* router, // routing.APIRouter
+        [in] BSTR prefix,
+        [in] SAFARRAY(BSTR) tags,
+        [in] SAFARRAY(DependsData*) dependencies,
+        [in] VARIANT responses, // dict[int | str, dict[str, Any]]
+        [in] VARIANT_BOOL deprecated,
+        [in] VARIANT_BOOL include_in_schema,
+        [in] ResponseData* default_response_class, // type[Response]
+        [in] SAFARRAY(BaseRouteData*) callbacks,
+        [in] IUnknown* generate_unique_id_function // Callable[[routing.APIRoute], str]
+    );
 
-// Placeholder for BaseRoute
-typedef [uuid(00000000-0000-0000-0000-000000000009)] struct BaseRoute {};
+    [helpstring("Decorator for GET requests.")]
+    HRESULT get(
+        [in] BSTR path,
+        [in] VARIANT response_model, // Any
+        [in] long status_code,
+        [in] SAFARRAY(BSTR) tags,
+        [in] SAFARRAY(DependsData*) dependencies,
+        [in] BSTR summary,
+        [in] BSTR description,
+        [in] BSTR response_description,
+        [in] VARIANT responses, // dict[int | str, dict[str, Any]]
+        [in] VARIANT_BOOL deprecated,
+        [in] BSTR operation_id,
+        [in] IncExData* response_model_include,
+        [in] IncExData* response_model_exclude,
+        [in] VARIANT_BOOL response_model_by_alias,
+        [in] VARIANT_BOOL response_model_exclude_unset,
+        [in] VARIANT_BOOL response_model_exclude_defaults,
+        [in] VARIANT_BOOL response_model_exclude_none,
+        [in] VARIANT_BOOL include_in_schema,
+        [in] ResponseData* response_class, // type[Response]
+        [in] BSTR name,
+        [in] SAFARRAY(BaseRouteData*) callbacks,
+        [in] VARIANT openapi_extra, // dict[str, Any]
+        [in] IUnknown* generate_unique_id_function // Callable[[routing.APIRoute], str]
+    );
 
-// Placeholder for DecoratedCallable
-typedef [uuid(00000000-0000-0000-0000-00000000000A)] struct DecoratedCallable {};
+    [helpstring("Decorator for PUT requests.")]
+    HRESULT put(
+        [in] BSTR path,
+        [in] VARIANT response_model, // Any
+        [in] long status_code,
+        [in] SAFARRAY(BSTR) tags,
+        [in] SAFARRAY(DependsData*) dependencies,
+        [in] BSTR summary,
+        [in] BSTR description,
+        [in] BSTR response_description,
+        [in] VARIANT responses, // dict[int | str, dict[str, Any]]
+        [in] VARIANT_BOOL deprecated,
+        [in] BSTR operation_id,
+        [in] IncExData* response_model_include,
+        [in] IncExData* response_model_exclude,
+        [in] VARIANT_BOOL response_model_by_alias,
+        [in] VARIANT_BOOL response_model_exclude_unset,
+        [in] VARIANT_BOOL response_model_exclude_defaults,
+        [in] VARIANT_BOOL response_model_exclude_none,
+        [in] VARIANT_BOOL include_in_schema,
+        [in] ResponseData* response_class, // type[Response]
+        [in] BSTR name,
+        [in] SAFARRAY(BaseRouteData*) callbacks,
+        [in] VARIANT openapi_extra, // dict[str, Any]
+        [in] IUnknown* generate_unique_id_function // Callable[[routing.APIRoute], str]
+    );
 
-// Structure to represent dict[str, Any]
-typedef [uuid(00000000-0000-0000-0000-00000000000B)] struct StringAnyDict {
-    [string] BSTR key;
-    AnyType value;
-};
+    [helpstring("Decorator for POST requests.")]
+    HRESULT post(
+        [in] BSTR path,
+        [in] VARIANT response_model, // Any
+        [in] long status_code,
+        [in] SAFARRAY(BSTR) tags,
+        [in] SAFARRAY(DependsData*) dependencies,
+        [in] BSTR summary,
+        [in] BSTR description,
+        [in] BSTR response_description,
+        [in] VARIANT responses, // dict[int | str, dict[str, Any]]
+        [in] VARIANT_BOOL deprecated,
+        [in] BSTR operation_id,
+        [in] IncExData* response_model_include,
+        [in] IncExData* response_model_exclude,
+        [in] VARIANT_BOOL response_model_by_alias,
+        [in] VARIANT_BOOL response_model_exclude_unset,
+        [in] VARIANT_BOOL response_model_exclude_defaults,
+        [in] VARIANT_BOOL response_model_exclude_none,
+        [in] VARIANT_BOOL include_in_schema,
+        [in] ResponseData* response_class, // type[Response]
+        [in] BSTR name,
+        [in] SAFARRAY(BaseRouteData*) callbacks,
+        [in] VARIANT openapi_extra, // dict[str, Any]
+        [in] IUnknown* generate_unique_id_function // Callable[[routing.APIRoute], str]
+    );
 
-// Structure to represent list[str | Enum]
-typedef [uuid(00000000-0000-0000-0000-00000000000C)] struct StringEnumList {
-    VARIANT_BOOL isString; // 0 for EnumType, 1 for string
-    [switch_is(isString)] union {
-        [case(1)] [string] BSTR stringValue;
-        [case(0)] EnumType enumValue;
-    };
-};
+    [helpstring("Decorator for DELETE requests.")]
+    HRESULT delete(
+        [in] BSTR path,
+        [in] VARIANT response_model, // Any
+        [in] long status_code,
+        [in] SAFARRAY(BSTR) tags,
+        [in] SAFARRAY(DependsData*) dependencies,
+        [in] BSTR summary,
+        [in] BSTR description,
+        [in] BSTR response_description,
+        [in] VARIANT responses, // dict[int | str, dict[str, Any]]
+        [in] VARIANT_BOOL deprecated,
+        [in] BSTR operation_id,
+        [in] IncExData* response_model_include,
+        [in] IncExData* response_model_exclude,
+        [in] VARIANT_BOOL response_model_by_alias,
+        [in] VARIANT_BOOL response_model_exclude_unset,
+        [in] VARIANT_BOOL response_model_exclude_defaults,
+        [in] VARIANT_BOOL response_model_exclude_none,
+        [in] VARIANT_BOOL include_in_schema,
+        [in] ResponseData* response_class, // type[Response]
+        [in] BSTR name,
+        [in] SAFARRAY(BaseRouteData*) callbacks,
+        [in] VARIANT openapi_extra, // dict[str, Any]
+        [in] IUnknown* generate_unique_id_function // Callable[[routing.APIRoute], str]
+    );
 
-// Structure to represent dict[int | str, dict[str, Any]]
-typedef [uuid(00000000-0000-0000-0000-00000000000D)] struct IntStrStringAnyDict {
-    VARIANT_BOOL isInt; // 0 for string, 1 for int
-    [switch_is(isInt)] union {
-        [case(1)] long intKey;
-        [case(0)] [string] BSTR stringKey;
-    };
-    SAFEARRAY(StringAnyDict) value;
-};
+    [helpstring("Decorator for OPTIONS requests.")]
+    HRESULT options(
+        [in] BSTR path,
+        [in] VARIANT response_model, // Any
+        [in] long status_code,
+        [in] SAFARRAY(BSTR) tags,
+        [in] SAFARRAY(DependsData*) dependencies,
+        [in] BSTR summary,
+        [in] BSTR description,
+        [in] BSTR response_description,
+        [in] VARIANT responses, // dict[int | str, dict[str, Any]]
+        [in] VARIANT_BOOL deprecated,
+        [in] BSTR operation_id,
+        [in] IncExData* response_model_include,
+        [in] IncExData* response_model_exclude,
+        [in] VARIANT_BOOL response_model_by_alias,
+        [in] VARIANT_BOOL response_model_exclude_unset,
+        [in] VARIANT_BOOL response_model_exclude_defaults,
+        [in] VARIANT_BOOL response_model_exclude_none,
+        [in] VARIANT_BOOL include_in_schema,
+        [in] ResponseData* response_class, // type[Response]
+        [in] BSTR name,
+        [in] SAFARRAY(BaseRouteData*) callbacks,
+        [in] VARIANT openapi_extra, // dict[str, Any]
+        [in] IUnknown* generate_unique_id_function // Callable[[routing.APIRoute], str]
+    );
 
-// Structure to represent list[Depends]
-typedef [uuid(00000000-0000-0000-0000-00000000000E)] struct DependsList {
-    [size_is(cElements)] Depends aElements[1];
-    ULONG cElements;
-};
+    [helpstring("Decorator for HEAD requests.")]
+    HRESULT head(
+        [in] BSTR path,
+        [in] VARIANT response_model, // Any
+        [in] long status_code,
+        [in] SAFARRAY(BSTR) tags,
+        [in] SAFARRAY(DependsData*) dependencies,
+        [in] BSTR summary,
+        [in] BSTR description,
+        [in] BSTR response_description,
+        [in] VARIANT responses, // dict[int | str, dict[str, Any]]
+        [in] VARIANT_BOOL deprecated,
+        [in] BSTR operation_id,
+        [in] IncExData* response_model_include,
+        [in] IncExData* response_model_exclude,
+        [in] VARIANT_BOOL response_model_by_alias,
+        [in] VARIANT_BOOL response_model_exclude_unset,
+        [in] VARIANT_BOOL response_model_exclude_defaults,
+        [in] VARIANT_BOOL response_model_exclude_none,
+        [in] VARIANT_BOOL include_in_schema,
+        [in] ResponseData* response_class, // type[Response]
+        [in] BSTR name,
+        [in] SAFARRAY(BaseRouteData*) callbacks,
+        [in] VARIANT openapi_extra, // dict[str, Any]
+        [in] IUnknown* generate_unique_id_function // Callable[[routing.APIRoute], str]
+    );
 
-// Structure to represent list[str]
-typedef [uuid(00000000-0000-0000-0000-00000000000F)] struct StringList {
-    [size_is(cElements)] [string] BSTR aElements[1];
-    ULONG cElements;
-};
+    [helpstring("Decorator for PATCH requests.")]
+    HRESULT patch(
+        [in] BSTR path,
+        [in] VARIANT response_model, // Any
+        [in] long status_code,
+        [in] SAFARRAY(BSTR) tags,
+        [in] SAFARRAY(DependsData*) dependencies,
+        [in] BSTR summary,
+        [in] BSTR description,
+        [in] BSTR response_description,
+        [in] VARIANT responses, // dict[int | str, dict[str, Any]]
+        [in] VARIANT_BOOL deprecated,
+        [in] BSTR operation_id,
+        [in] IncExData* response_model_include,
+        [in] IncExData* response_model_exclude,
+        [in] VARIANT_BOOL response_model_by_alias,
+        [in] VARIANT_BOOL response_model_exclude_unset,
+        [in] VARIANT_BOOL response_model_exclude_defaults,
+        [in] VARIANT_BOOL response_model_exclude_none,
+        [in] VARIANT_BOOL include_in_schema,
+        [in] ResponseData* response_class, // type[Response]
+        [in] BSTR name,
+        [in] SAFARRAY(BaseRouteData*) callbacks,
+        [in] VARIANT openapi_extra, // dict[str, Any]
+        [in] IUnknown* generate_unique_id_function // Callable[[routing.APIRoute], str]
+    );
 
-// Structure to represent list[BaseRoute]
-typedef [uuid(00000000-0000-0000-0000-000000000010)] struct BaseRouteList {
-    [size_is(cElements)] BaseRoute aElements[1];
-    ULONG cElements;
-};
+    [helpstring("Decorator for TRACE requests.")]
+    HRESULT trace(
+        [in] BSTR path,
+        [in] VARIANT response_model, // Any
+        [in] long status_code,
+        [in] SAFARRAY(BSTR) tags,
+        [in] SAFARRAY(DependsData*) dependencies,
+        [in] BSTR summary,
+        [in] BSTR description,
+        [in] BSTR response_description,
+        [in] VARIANT responses, // dict[int | str, dict[str, Any]]
+        [in] VARIANT_BOOL deprecated,
+        [in] BSTR operation_id,
+        [in] IncExData* response_model_include,
+        [in] IncExData* response_model_exclude,
+        [in] VARIANT_BOOL response_model_by_alias,
+        [in] VARIANT_BOOL response_model_exclude_unset,
+        [in] VARIANT_BOOL response_model_exclude_defaults,
+        [in] VARIANT_BOOL response_model_exclude_none,
+        [in] VARIANT_BOOL include_in_schema,
+        [in] ResponseData* response_class, // type[Response]
+        [in] BSTR name,
+        [in] SAFARRAY(BaseRouteData*) callbacks,
+        [in] VARIANT openapi_extra, // dict[str, Any]
+        [in] IUnknown* generate_unique_id_function // Callable[[routing.APIRoute], str]
+    );
 
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-0000-0000-0000-000000000011)] struct OpenapiExtraDict {
-    [string] BSTR key;
-    AnyType value;
-};
+    [helpstring("Decorator for WebSocket routes.")]
+    HRESULT websocket_route(
+        [in] BSTR path,
+        [in] BSTR name
+    );
 
-// Structure to represent list[str | Enum] for tags
-typedef [uuid(00000000-0000-0000-0000-000000000012)] struct TagsList {
-    VARIANT_BOOL isString; // 0 for EnumType, 1 for string
-    [switch_is(isString)] union {
-        [case(1)] [string] BSTR stringValue;
-        [case(0)] EnumType enumValue;
-    };
-};
-
-// Structure to represent dict[int | str, dict[str, Any]] for responses
-typedef [uuid(00000000-0000-0000-0000-000000000013)] struct ResponsesDict {
-    VARIANT_BOOL isInt; // 0 for string, 1 for int
-    [switch_is(isInt)] union {
-        [case(1)] long intKey;
-        [case(0)] [string] BSTR stringKey;
-    };
-    SAFEARRAY(StringAnyDict) value;
-};
-
-// Structure to represent list[str] for methods
-typedef [uuid(00000000-0000-0000-0000-000000000014)] struct MethodsList {
-    [size_is(cElements)] [string] BSTR aElements[1];
-    ULONG cElements;
-};
-
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-0000-0000-0000-000000000015)] struct OpenapiExtraDict {
-    [string] BSTR key;
-    AnyType value;
-};
-
-// Structure to represent list[BaseRoute] for callbacks
-typedef [uuid(00000000-0000-0000-0000-000000000016)] struct CallbacksList {
-    [size_is(cElements)] BaseRoute aElements[1];
-    ULONG cElements;
-};
-
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-0000-0000-0000-000000000017)] struct OpenapiExtraDict {
-    [string] BSTR key;
-    AnyType value;
-};
-
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-0000-0000-0000-000000000018)] struct OpenapiExtraDict {
-    [string] BSTR key;
-    AnyType value;
-};
-
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-0000-0000-0000-000000000019)] struct OpenapiExtraDict {
-    [string] BSTR key;
-    AnyType value;
-};
-
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-0000-0000-0000-00000000001A)] struct OpenapiExtraDict {
-    [string] BSTR key;
-    AnyType value;
-};
-
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-0000-0000-0000-00000000001B)] struct OpenapiExtraDict {
-    [string] BSTR key;
-    AnyType value;
-};
-
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-0000-0000-0000-00000000001C)] struct OpenapiExtraDict {
-    [string] BSTR key;
-    AnyType value;
-};
-
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-0000-0000-0000-00000000001D)] struct OpenapiExtraDict {
-    [string] BSTR key;
-    AnyType value;
-};
-
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-0000-0000-0000-00000000001E)] struct OpenapiExtraDict {
-    [string] BSTR key;
-    AnyType value;
-};
-
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-0000-0000-0000-00000000001F)] struct OpenapiExtraDict {
-    [string] BSTR key;
-    AnyType value;
-};
-
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-0000-0000-0000-000000000020)] struct OpenapiExtraDict {
-    [string] BSTR key;
-    AnyType value;
-};
-
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-0000-0000-0000-000000000021)] struct OpenapiExtraDict {
-    [string] BSTR key;
-    AnyType value;
-};
-
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-0000-0000-0000-000000000022)] struct OpenapiExtraDict {
-    [string] BSTR key;
-    AnyType value;
-};
-
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-0000-0000-0000-000000000023)] struct OpenapiExtraDict {
-    [string] BSTR key;
-    AnyType value;
-};
-
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-0000-0000-0000-000000000024)] struct OpenapiExtraDict {
-    [string] BSTR key;
-    AnyType value;
-};
-
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-0000-0000-0000-000000000025)] struct OpenapiExtraDict {
-    [string] BSTR key;
-    AnyType value;
-};
-
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-0000-0000-0000-000000000026)] struct OpenapiExtraDict {
-    [string] BSTR key;
-    AnyType value;
-};
-
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-0000-0000-0000-000000000027)] struct OpenapiExtraDict {
-    [string] BSTR key;
-    AnyType value;
-};
-
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-0000-0000-0000-000000000028)] struct OpenapiExtraDict {
-    [string] BSTR key;
-    AnyType value;
-};
-
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-0000-0000-0000-000000000029)] struct OpenapiExtraDict {
-    [string] BSTR key;
-    AnyType value;
-};
-
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-0000-0000-0000-00000000002A)] struct OpenapiExtraDict {
-    [string] BSTR key;
-    AnyType value;
-};
-
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-0000-0000-0000-00000000002B)] struct OpenapiExtraDict {
-    [string] BSTR key;
-    AnyType value;
-};
-
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-0000-0000-0000-00000000002C)] struct OpenapiExtraDict {
-    [string] BSTR key;
-    AnyType value;
-};
-
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-0000-0000-0000-00000000002D)] struct OpenapiExtraDict {
-    [string] BSTR key;
-    AnyType value;
-};
-
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-0000-0000-0000-00000000002E)] struct OpenapiExtraDict {
-    [string] BSTR key;
-    AnyType value;
-};
-
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-0000-0000-0000-00000000002F)] struct OpenapiExtraDict {
-    [string] BSTR key;
-    AnyType value;
-};
-
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-0000-0000-0000-000000000030)] struct OpenapiExtraDict {
-    [string] BSTR key;
-    AnyType value;
-};
-
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-0000-0000-0000-000000000031)] struct OpenapiExtraDict {
-    [string] BSTR key;
-    AnyType value;
-};
-
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-0000-0000-0000-000000000032)] struct OpenapiExtraDict {
-    [string] BSTR key;
-    AnyType value;
-};
-
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-0000-0000-0000-000000000033)] struct OpenapiExtraDict {
-    [string] BSTR key;
-    AnyType value;
-};
-
-// Structure to represent dict[str, Any] for openapi_extra
-typedef [uuid(00000000-
+    [helpstring("Decorator for event handlers.")]
+    HRESULT on_event(
+        [in] BSTR event_
 ```
 
 ### 2.2. Состав интерфейса
@@ -403,7 +440,7 @@ typedef [uuid(00000000-
 
 **Полное имя:** `fastapi_app.FastAPI`
 
-**Расположение:** `work/fastapi_app.py:41-4691`
+**Расположение:** `work/fastapi_app.py:41-4692`
 
 **Назначение:** `FastAPI` app class, the main entrypoint to use FastAPI.
 
@@ -446,9 +483,9 @@ obj = FastAPI(False, None, 'FastAPI', None, '', '0.1.0', '/openapi.json', None, 
 
 **Расположение:** `work/fastapi_app.py:1018-1066`
 
-**Назначение:** Эта функция собирает и конфигурирует стек промежуточного программного обеспечения (middleware) для приложения FastAPI.
+**Назначение:** Эта функция собирает и конфигурирует стек middleware для приложения FastAPI.
 
-**Логика работы:** Функция создает список промежуточного программного обеспечения, включая обработчики ошибок, пользовательские middleware и специфичные для FastAPI middleware, такие как `AsyncExitStackMiddleware`. Затем она последовательно оборачивает основной маршрутизатор приложения (`self.router`) каждым элементом middleware, создавая итоговое ASGI-приложение.
+**Логика работы:** Функция создает список middleware, включая `ServerErrorMiddleware`, пользовательские middleware, `ExceptionMiddleware` и `AsyncExitStackMiddleware`. Затем она итерирует по этому списку в обратном порядке, оборачивая основной маршрутизатор приложения (`self.router`) каждым middleware, чтобы сформировать итоговое ASGI-приложение.
 
 **Параметры:**
 
@@ -473,7 +510,7 @@ result = obj.build_middleware_stack()
 
 **Сигнатура:** `def openapi(self) -> dict[str, Any]`
 
-**Расположение:** `work/fastapi_app.py:1068-1099`
+**Расположение:** `work/fastapi_app.py:1068-1100`
 
 **Назначение:** Generate the OpenAPI schema of the application. This is called by FastAPI
 internally.
@@ -510,11 +547,11 @@ result = obj.openapi()
 
 **Сигнатура:** `def setup(self) -> None`
 
-**Расположение:** `work/fastapi_app.py:1101-1154`
+**Расположение:** `work/fastapi_app.py:1102-1155`
 
-**Назначение:** Эта функция выполняет начальную настройку приложения FastAPI, в частности, добавляет маршруты для документации API (Swagger UI и ReDoc), если они включены.
+**Назначение:** Эта функция настраивает и добавляет маршруты для документации API (Swagger UI и ReDoc), если они включены.
 
-**Логика работы:** Функция проверяет наличие URL-адресов для документации (`openapi_url`, `docs_url`, `redoc_url`). Если они заданы, она определяет соответствующие асинхронные функции-обработчики, которые генерируют и возвращают HTML-страницы документации, и добавляет их как маршруты к приложению с помощью `self.add_route`.
+**Логика работы:** Функция проверяет наличие `openapi_url` и `docs_url`. Если они заданы, она определяет асинхронные функции-обработчики для генерации OpenAPI-схемы, отображения Swagger UI и ReDoc, а затем добавляет их как маршруты к приложению с помощью `self.add_route`. Также обрабатывается случай с `swagger_ui_oauth2_redirect_url`.
 
 **Параметры:**
 
@@ -539,11 +576,11 @@ result = obj.setup()
 
 **Сигнатура:** `def add_api_route(self, path: str, endpoint: Callable[..., Any], *, response_model: Any = Default(None), status_code: int | None = None, tags: list[str | Enum] | None = None, dependencies: Sequence[Depends] | None = None, summary: str | None = None, description: str | None = None, response_description: str = 'Successful Response', responses: dict[int | str, dict[str, Any]] | None = None, deprecated: bool | None = None, methods: list[str] | None = None, operation_id: str | None = None, response_model_include: IncEx | None = None, response_model_exclude: IncEx | None = None, response_model_by_alias: bool = True, response_model_exclude_unset: bool = False, response_model_exclude_defaults: bool = False, response_model_exclude_none: bool = False, include_in_schema: bool = True, response_class: type[Response] | DefaultPlaceholder = Default(JSONResponse), name: str | None = None, openapi_extra: dict[str, Any] | None = None, generate_unique_id_function: Callable[[routing.APIRoute], str] = Default(generate_unique_id)) -> None`
 
-**Расположение:** `work/fastapi_app.py:1161-1216`
+**Расположение:** `work/fastapi_app.py:1162-1217`
 
-**Назначение:** Эта функция используется для добавления HTTP-маршрута к приложению FastAPI, который будет обрабатывать входящие запросы по указанному пути.
+**Назначение:** Эта функция используется для добавления нового API-маршрута к приложению FastAPI, который будет обрабатывать HTTP-запросы.
 
-**Логика работы:** Функция принимает путь, конечную точку (функцию-обработчик запроса) и множество необязательных параметров для настройки поведения маршрута. Она делегирует добавление маршрута объекту `self.router`, передавая ему все полученные параметры.
+**Логика работы:** Функция принимает путь, конечную точку (функцию-обработчик) и множество необязательных параметров для настройки маршрута, таких как модель ответа, статус-код, теги, зависимости, описание и другие параметры OpenAPI. Затем она вызывает метод `add_api_route` внутреннего объекта `router` для регистрации этого маршрута.
 
 **Параметры:**
 
@@ -593,11 +630,11 @@ result = obj.add_api_route('output.json', 'http://example.com', response_model=D
 
 **Сигнатура:** `def api_route(self, path: str, *, response_model: Any = Default(None), status_code: int | None = None, tags: list[str | Enum] | None = None, dependencies: Sequence[Depends] | None = None, summary: str | None = None, description: str | None = None, response_description: str = 'Successful Response', responses: dict[int | str, dict[str, Any]] | None = None, deprecated: bool | None = None, methods: list[str] | None = None, operation_id: str | None = None, response_model_include: IncEx | None = None, response_model_exclude: IncEx | None = None, response_model_by_alias: bool = True, response_model_exclude_unset: bool = False, response_model_exclude_defaults: bool = False, response_model_exclude_none: bool = False, include_in_schema: bool = True, response_class: type[Response] = Default(JSONResponse), name: str | None = None, openapi_extra: dict[str, Any] | None = None, generate_unique_id_function: Callable[[routing.APIRoute], str] = Default(generate_unique_id)) -> Callable[[DecoratedCallable], DecoratedCallable]`
 
-**Расположение:** `work/fastapi_app.py:1218-1276`
+**Расположение:** `work/fastapi_app.py:1219-1277`
 
-**Назначение:** Эта функция служит декоратором для определения HTTP-маршрутов в приложении FastAPI, позволяя настраивать их поведение через аргументы.
+**Назначение:** Эта функция служит декоратором для определения API-маршрутов, позволяя настраивать их поведение и документацию OpenAPI.
 
-**Логика работы:** Функция принимает путь и множество необязательных параметров для настройки маршрута. Она возвращает декоратор, который при применении к функции-обработчику запроса регистрирует этот маршрут через `self.router.add_api_route`, передавая все настроенные параметры.
+**Логика работы:** Функция принимает путь и множество необязательных параметров, аналогичных `add_api_route`. Она возвращает декоратор, который при применении к функции-обработчику регистрирует этот маршрут через внутренний объект `router`, передавая все заданные параметры.
 
 **Параметры:**
 
@@ -646,11 +683,11 @@ result = obj.api_route('output.json', response_model=Default(None), status_code=
 
 **Сигнатура:** `def add_api_websocket_route(self, path: str, endpoint: Callable[..., Any], name: str | None = None, *, dependencies: Sequence[Depends] | None = None) -> None`
 
-**Расположение:** `work/fastapi_app.py:1278-1291`
+**Расположение:** `work/fastapi_app.py:1279-1292`
 
 **Назначение:** Эта функция добавляет маршрут для обработки WebSocket-соединений к приложению FastAPI.
 
-**Логика работы:** Функция принимает путь, конечную точку (функцию-обработчик WebSocket-соединения) и необязательное имя маршрута, а также зависимости. Она передает эти параметры объекту `self.router` для регистрации WebSocket-маршрута.
+**Логика работы:** Функция принимает путь, конечную точку (функцию-обработчик WebSocket) и необязательное имя маршрута, а также необязательные зависимости. Она передает эти параметры методу `add_api_websocket_route` внутреннего объекта `router` для регистрации WebSocket-маршрута.
 
 **Параметры:**
 
@@ -680,7 +717,7 @@ result = obj.add_api_websocket_route('output.json', 'http://example.com', 'Alice
 
 **Сигнатура:** `def websocket(self, path: str, name: str | None = None, *, dependencies: Sequence[Depends] | None = None) -> Callable[[DecoratedCallable], DecoratedCallable]`
 
-**Расположение:** `work/fastapi_app.py:1293-1356`
+**Расположение:** `work/fastapi_app.py:1294-1357`
 
 **Назначение:** Decorate a WebSocket function.
 
@@ -711,7 +748,7 @@ result = obj.websocket('output.json', 'Alice', dependencies=None)
 
 **Сигнатура:** `def include_router(self, router: routing.APIRouter, *, prefix: str = '', tags: list[str | Enum] | None = None, dependencies: Sequence[Depends] | None = None, responses: dict[int | str, dict[str, Any]] | None = None, deprecated: bool | None = None, include_in_schema: bool = True, default_response_class: type[Response] = Default(JSONResponse), callbacks: list[BaseRoute] | None = None, generate_unique_id_function: Callable[[routing.APIRoute], str] = Default(generate_unique_id)) -> None`
 
-**Расположение:** `work/fastapi_app.py:1358-1561`
+**Расположение:** `work/fastapi_app.py:1359-1562`
 
 **Назначение:** Include an `APIRouter` in the same app.
 
@@ -750,7 +787,7 @@ result = obj.include_router(router, prefix='', tags=None, dependencies=None, res
 
 **Сигнатура:** `def get(self, path: str, *, response_model: Any = Default(None), status_code: int | None = None, tags: list[str | Enum] | None = None, dependencies: Sequence[Depends] | None = None, summary: str | None = None, description: str | None = None, response_description: str = 'Successful Response', responses: dict[int | str, dict[str, Any]] | None = None, deprecated: bool | None = None, operation_id: str | None = None, response_model_include: IncEx | None = None, response_model_exclude: IncEx | None = None, response_model_by_alias: bool = True, response_model_exclude_unset: bool = False, response_model_exclude_defaults: bool = False, response_model_exclude_none: bool = False, include_in_schema: bool = True, response_class: type[Response] = Default(JSONResponse), name: str | None = None, callbacks: list[BaseRoute] | None = None, openapi_extra: dict[str, Any] | None = None, generate_unique_id_function: Callable[[routing.APIRoute], str] = Default(generate_unique_id)) -> Callable[[DecoratedCallable], DecoratedCallable]`
 
-**Расположение:** `work/fastapi_app.py:1563-1934`
+**Расположение:** `work/fastapi_app.py:1564-1935`
 
 **Назначение:** Add a *path operation* using an HTTP GET operation.
 
@@ -801,7 +838,7 @@ result = obj.get('output.json', response_model=Default(None), status_code=None, 
 
 **Сигнатура:** `def put(self, path: str, *, response_model: Any = Default(None), status_code: int | None = None, tags: list[str | Enum] | None = None, dependencies: Sequence[Depends] | None = None, summary: str | None = None, description: str | None = None, response_description: str = 'Successful Response', responses: dict[int | str, dict[str, Any]] | None = None, deprecated: bool | None = None, operation_id: str | None = None, response_model_include: IncEx | None = None, response_model_exclude: IncEx | None = None, response_model_by_alias: bool = True, response_model_exclude_unset: bool = False, response_model_exclude_defaults: bool = False, response_model_exclude_none: bool = False, include_in_schema: bool = True, response_class: type[Response] = Default(JSONResponse), name: str | None = None, callbacks: list[BaseRoute] | None = None, openapi_extra: dict[str, Any] | None = None, generate_unique_id_function: Callable[[routing.APIRoute], str] = Default(generate_unique_id)) -> Callable[[DecoratedCallable], DecoratedCallable]`
 
-**Расположение:** `work/fastapi_app.py:1936-2312`
+**Расположение:** `work/fastapi_app.py:1937-2313`
 
 **Назначение:** Add a *path operation* using an HTTP PUT operation.
 
@@ -852,7 +889,7 @@ result = obj.put('output.json', response_model=Default(None), status_code=None, 
 
 **Сигнатура:** `def post(self, path: str, *, response_model: Any = Default(None), status_code: int | None = None, tags: list[str | Enum] | None = None, dependencies: Sequence[Depends] | None = None, summary: str | None = None, description: str | None = None, response_description: str = 'Successful Response', responses: dict[int | str, dict[str, Any]] | None = None, deprecated: bool | None = None, operation_id: str | None = None, response_model_include: IncEx | None = None, response_model_exclude: IncEx | None = None, response_model_by_alias: bool = True, response_model_exclude_unset: bool = False, response_model_exclude_defaults: bool = False, response_model_exclude_none: bool = False, include_in_schema: bool = True, response_class: type[Response] = Default(JSONResponse), name: str | None = None, callbacks: list[BaseRoute] | None = None, openapi_extra: dict[str, Any] | None = None, generate_unique_id_function: Callable[[routing.APIRoute], str] = Default(generate_unique_id)) -> Callable[[DecoratedCallable], DecoratedCallable]`
 
-**Расположение:** `work/fastapi_app.py:2314-2690`
+**Расположение:** `work/fastapi_app.py:2315-2691`
 
 **Назначение:** Add a *path operation* using an HTTP POST operation.
 
@@ -903,7 +940,7 @@ result = obj.post('output.json', response_model=Default(None), status_code=None,
 
 **Сигнатура:** `def delete(self, path: str, *, response_model: Any = Default(None), status_code: int | None = None, tags: list[str | Enum] | None = None, dependencies: Sequence[Depends] | None = None, summary: str | None = None, description: str | None = None, response_description: str = 'Successful Response', responses: dict[int | str, dict[str, Any]] | None = None, deprecated: bool | None = None, operation_id: str | None = None, response_model_include: IncEx | None = None, response_model_exclude: IncEx | None = None, response_model_by_alias: bool = True, response_model_exclude_unset: bool = False, response_model_exclude_defaults: bool = False, response_model_exclude_none: bool = False, include_in_schema: bool = True, response_class: type[Response] = Default(JSONResponse), name: str | None = None, callbacks: list[BaseRoute] | None = None, openapi_extra: dict[str, Any] | None = None, generate_unique_id_function: Callable[[routing.APIRoute], str] = Default(generate_unique_id)) -> Callable[[DecoratedCallable], DecoratedCallable]`
 
-**Расположение:** `work/fastapi_app.py:2692-3063`
+**Расположение:** `work/fastapi_app.py:2693-3064`
 
 **Назначение:** Add a *path operation* using an HTTP DELETE operation.
 
@@ -954,7 +991,7 @@ result = obj.delete('output.json', response_model=Default(None), status_code=Non
 
 **Сигнатура:** `def options(self, path: str, *, response_model: Any = Default(None), status_code: int | None = None, tags: list[str | Enum] | None = None, dependencies: Sequence[Depends] | None = None, summary: str | None = None, description: str | None = None, response_description: str = 'Successful Response', responses: dict[int | str, dict[str, Any]] | None = None, deprecated: bool | None = None, operation_id: str | None = None, response_model_include: IncEx | None = None, response_model_exclude: IncEx | None = None, response_model_by_alias: bool = True, response_model_exclude_unset: bool = False, response_model_exclude_defaults: bool = False, response_model_exclude_none: bool = False, include_in_schema: bool = True, response_class: type[Response] = Default(JSONResponse), name: str | None = None, callbacks: list[BaseRoute] | None = None, openapi_extra: dict[str, Any] | None = None, generate_unique_id_function: Callable[[routing.APIRoute], str] = Default(generate_unique_id)) -> Callable[[DecoratedCallable], DecoratedCallable]`
 
-**Расположение:** `work/fastapi_app.py:3065-3436`
+**Расположение:** `work/fastapi_app.py:3066-3437`
 
 **Назначение:** Add a *path operation* using an HTTP OPTIONS operation.
 
@@ -1005,7 +1042,7 @@ result = obj.options('output.json', response_model=Default(None), status_code=No
 
 **Сигнатура:** `def head(self, path: str, *, response_model: Any = Default(None), status_code: int | None = None, tags: list[str | Enum] | None = None, dependencies: Sequence[Depends] | None = None, summary: str | None = None, description: str | None = None, response_description: str = 'Successful Response', responses: dict[int | str, dict[str, Any]] | None = None, deprecated: bool | None = None, operation_id: str | None = None, response_model_include: IncEx | None = None, response_model_exclude: IncEx | None = None, response_model_by_alias: bool = True, response_model_exclude_unset: bool = False, response_model_exclude_defaults: bool = False, response_model_exclude_none: bool = False, include_in_schema: bool = True, response_class: type[Response] = Default(JSONResponse), name: str | None = None, callbacks: list[BaseRoute] | None = None, openapi_extra: dict[str, Any] | None = None, generate_unique_id_function: Callable[[routing.APIRoute], str] = Default(generate_unique_id)) -> Callable[[DecoratedCallable], DecoratedCallable]`
 
-**Расположение:** `work/fastapi_app.py:3438-3809`
+**Расположение:** `work/fastapi_app.py:3439-3810`
 
 **Назначение:** Add a *path operation* using an HTTP HEAD operation.
 
@@ -1056,7 +1093,7 @@ result = obj.head('output.json', response_model=Default(None), status_code=None,
 
 **Сигнатура:** `def patch(self, path: str, *, response_model: Any = Default(None), status_code: int | None = None, tags: list[str | Enum] | None = None, dependencies: Sequence[Depends] | None = None, summary: str | None = None, description: str | None = None, response_description: str = 'Successful Response', responses: dict[int | str, dict[str, Any]] | None = None, deprecated: bool | None = None, operation_id: str | None = None, response_model_include: IncEx | None = None, response_model_exclude: IncEx | None = None, response_model_by_alias: bool = True, response_model_exclude_unset: bool = False, response_model_exclude_defaults: bool = False, response_model_exclude_none: bool = False, include_in_schema: bool = True, response_class: type[Response] = Default(JSONResponse), name: str | None = None, callbacks: list[BaseRoute] | None = None, openapi_extra: dict[str, Any] | None = None, generate_unique_id_function: Callable[[routing.APIRoute], str] = Default(generate_unique_id)) -> Callable[[DecoratedCallable], DecoratedCallable]`
 
-**Расположение:** `work/fastapi_app.py:3811-4187`
+**Расположение:** `work/fastapi_app.py:3812-4188`
 
 **Назначение:** Add a *path operation* using an HTTP PATCH operation.
 
@@ -1107,7 +1144,7 @@ result = obj.patch('output.json', response_model=Default(None), status_code=None
 
 **Сигнатура:** `def trace(self, path: str, *, response_model: Any = Default(None), status_code: int | None = None, tags: list[str | Enum] | None = None, dependencies: Sequence[Depends] | None = None, summary: str | None = None, description: str | None = None, response_description: str = 'Successful Response', responses: dict[int | str, dict[str, Any]] | None = None, deprecated: bool | None = None, operation_id: str | None = None, response_model_include: IncEx | None = None, response_model_exclude: IncEx | None = None, response_model_by_alias: bool = True, response_model_exclude_unset: bool = False, response_model_exclude_defaults: bool = False, response_model_exclude_none: bool = False, include_in_schema: bool = True, response_class: type[Response] = Default(JSONResponse), name: str | None = None, callbacks: list[BaseRoute] | None = None, openapi_extra: dict[str, Any] | None = None, generate_unique_id_function: Callable[[routing.APIRoute], str] = Default(generate_unique_id)) -> Callable[[DecoratedCallable], DecoratedCallable]`
 
-**Расположение:** `work/fastapi_app.py:4189-4560`
+**Расположение:** `work/fastapi_app.py:4190-4561`
 
 **Назначение:** Add a *path operation* using an HTTP TRACE operation.
 
@@ -1158,11 +1195,11 @@ result = obj.trace('output.json', response_model=Default(None), status_code=None
 
 **Сигнатура:** `def websocket_route(self, path: str, name: str | None = None) -> Callable[[DecoratedCallable], DecoratedCallable]`
 
-**Расположение:** `work/fastapi_app.py:4562-4569`
+**Расположение:** `work/fastapi_app.py:4563-4570`
 
 **Назначение:** Эта функция служит декоратором для определения WebSocket-маршрутов в приложении FastAPI.
 
-**Логика работы:** Функция принимает путь и необязательное имя для WebSocket-маршрута. Она возвращает декоратор, который при применении к функции-обработчику WebSocket регистрирует этот маршрут через `self.router.add_websocket_route`, передавая указанные путь и имя.
+**Логика работы:** Функция принимает путь и необязательное имя для WebSocket-маршрута. Она возвращает декоратор, который при применении к функции-обработчику WebSocket регистрирует этот маршрут через внутренний объект `router`, передавая путь и имя.
 
 **Параметры:**
 
@@ -1190,7 +1227,7 @@ result = obj.websocket_route('output.json', 'Alice')
 
 **Сигнатура:** `def on_event(self, event_type: str) -> Callable[[DecoratedCallable], DecoratedCallable]`
 
-**Расположение:** `work/fastapi_app.py:4579-4598`
+**Расположение:** `work/fastapi_app.py:4580-4599`
 
 **Назначение:** Add an event handler for the application.
 
@@ -1226,7 +1263,7 @@ result = obj.on_event('example')
 
 **Сигнатура:** `def middleware(self, middleware_type: str) -> Callable[[DecoratedCallable], DecoratedCallable]`
 
-**Расположение:** `work/fastapi_app.py:4600-4644`
+**Расположение:** `work/fastapi_app.py:4601-4645`
 
 **Назначение:** Add a middleware to the application.
 
@@ -1255,7 +1292,7 @@ result = obj.middleware('example')
 
 **Сигнатура:** `def exception_handler(self, exc_class_or_status_code: int | type[Exception]) -> Callable[[DecoratedCallable], DecoratedCallable]`
 
-**Расположение:** `work/fastapi_app.py:4646-4691`
+**Расположение:** `work/fastapi_app.py:4647-4692`
 
 **Назначение:** Add an exception handler to the app.
 

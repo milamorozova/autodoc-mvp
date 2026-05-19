@@ -3,3 +3,9 @@ __pycache__/
 *.fodt
 -c
 .vscode/
+.DS_Store
+*.bak
+*.~lock*
+registry.json
+snapshots/
+work1/
