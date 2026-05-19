@@ -1067,6 +1067,7 @@ class FastAPI(Starlette):
 
     def openapi(self) -> dict[str, Any]:
         #test
+        if True: pass
         """
         Generate the OpenAPI schema of the application. This is called by FastAPI
         internally.
