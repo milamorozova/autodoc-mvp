@@ -217,6 +217,7 @@ def process_file(
     component_name: str = "",
     fodt_template: str = "",
     commit: str = "",
+    generate_idl: bool = False,
 ) -> Optional[Path]:
     doc_model = build_doc_model(
         file_path=file_path,
@@ -362,7 +363,7 @@ def process_file(
                     print(f"[UPDATE] Новые сущности {truly_added} — пересобираем fodt полностью")
                     from tools.fodt_filler import parse_markdown, fill_template
                     tmpl_text = Path(fodt_template).read_text(encoding="utf-8")
-                    filled = fill_template(tmpl_text, data)
+                    filled = fill_template(tmpl_text, data, generate_idl=generate_idl)
                     fodt_out.write_text(filled, encoding="utf-8")
                 else:
                     update_fodt_sections(str(fodt_out), data, changed_qualnames)
@@ -379,7 +380,7 @@ def process_file(
                 md_text = output_path.read_text(encoding="utf-8")
                 tmpl_text = Path(fodt_template).read_text(encoding="utf-8")
                 data = parse_markdown(md_text)
-                filled = fill_template(tmpl_text, data)
+                filled = fill_template(tmpl_text, data, generate_idl=generate_idl)
                 fodt_out.write_text(filled, encoding="utf-8")
                 print(f"[FODT] Создан: {fodt_out}")
 
@@ -427,7 +428,7 @@ def process_file(
                 md_text = output_path.read_text(encoding="utf-8")
                 template_text = fodt_path.read_text(encoding="utf-8")
                 data = parse_markdown(md_text)
-                filled = fill_template(template_text, data)
+                filled = fill_template(template_text, data, generate_idl=generate_idl)
                 fodt_out = output_path.with_suffix(".fodt")
                 fodt_out.write_text(filled, encoding="utf-8")
                 save_fodt_hash(str(fodt_out), commit)
@@ -470,6 +471,7 @@ def main() -> None:
     parser.add_argument("--organizations",  default="")
     parser.add_argument("--links",          default="")
     parser.add_argument("--enrich",         action="store_true")
+    parser.add_argument("--generate-idl",   action="store_true", help="Генерировать IDL через LLM даже без CID")
     parser.add_argument("--api-key",        default="")
     parser.add_argument(
         "--fodt",
@@ -524,6 +526,7 @@ def main() -> None:
             component_name=args.component_name,
             fodt_template=args.fodt,
             commit=commit,
+            generate_idl=args.generate_idl,
         )
         if result is not None:
             generated.append(result)

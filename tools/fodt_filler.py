@@ -271,12 +271,8 @@ def odf_fn(fn: dict, idx: int) -> str:
     if fn.get("description"): xml += odf_p(fn["description"])
     if fn.get("logic"):       xml += odf_p("Логика работы: " + fn["logic"])
     if fn.get("signature"):
-        xml += (
-            f'   <text:p text:style-name="P44">'
-            f'<text:span text:style-name="T18">Сигнатура: </text:span>'
-            f'<text:span text:style-name="T29">{escape(fn["signature"])}</text:span>'
-            f'</text:p>\n'
-        )
+        xml += odf_p("Сигнатура:")
+        xml += odf_code(fn["signature"])
     if fn.get("params"):
         xml += odf_p("Параметры:")
         for p in fn["params"]:
@@ -389,7 +385,7 @@ def _is_empty(val) -> bool:
     return str(val).strip() in ("", "—", "-", "N/A", "n/a", "\u2014")
 
 
-def fill_template(tmpl: str, data: dict) -> str:
+def fill_template(tmpl: str, data: dict, generate_idl: bool = False) -> str:
     r = tmpl
     name = data["component_name"]
 
@@ -534,7 +530,7 @@ def fill_template(tmpl: str, data: dict) -> str:
     # IDL заменяем на N/A
     cid_empty = _is_empty(data.get("cid", ""))
 
-    if cid_empty:
+    if cid_empty and not generate_idl:
         idl_section_marker = f'2.1. {data["interface_title"]} IDL'
         idl_section_pos = r.find(idl_section_marker)
         if idl_section_pos != -1:
@@ -548,7 +544,7 @@ def fill_template(tmpl: str, data: dict) -> str:
         else:
             print("[WARN] Секция 2.1 не найдена для замены IDL на N/A")
 
-    elif data["idl_block"]:
+    elif data.get("idl_block"):
         # Есть CID и IDL от LLM — вставляем
         idl_section_marker = f'2.1. {data["interface_title"]} IDL'
         idl_section_pos = r.find(idl_section_marker)
