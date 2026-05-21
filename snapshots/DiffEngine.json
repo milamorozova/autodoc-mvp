@@ -3,7 +3,7 @@
   "name": "diff_engine",
   "qualname": "diff_engine",
   "lineno": 1,
-  "end_lineno": 423,
+  "end_lineno": 443,
   "file_path": "work/diff_engine.py",
   "language": "python",
   "signature": null,
@@ -15,8 +15,8 @@
       "node_type": "class",
       "name": "EntityDiff",
       "qualname": "diff_engine.EntityDiff",
-      "lineno": 33,
-      "end_lineno": 41,
+      "lineno": 36,
+      "end_lineno": 44,
       "file_path": "work/diff_engine.py",
       "language": "python",
       "signature": null,
@@ -31,8 +31,8 @@
       "node_type": "class",
       "name": "DiffResult",
       "qualname": "diff_engine.DiffResult",
-      "lineno": 45,
-      "end_lineno": 72,
+      "lineno": 48,
+      "end_lineno": 75,
       "file_path": "work/diff_engine.py",
       "language": "python",
       "signature": null,
@@ -46,8 +46,8 @@
           "node_type": "method",
           "name": "needs_llm_entities",
           "qualname": "diff_engine.DiffResult.needs_llm_entities",
-          "lineno": 51,
-          "end_lineno": 57,
+          "lineno": 54,
+          "end_lineno": 60,
           "file_path": "work/diff_engine.py",
           "language": "python",
           "signature": {
@@ -72,8 +72,8 @@
           "node_type": "method",
           "name": "has_changes",
           "qualname": "diff_engine.DiffResult.has_changes",
-          "lineno": 59,
-          "end_lineno": 60,
+          "lineno": 62,
+          "end_lineno": 63,
           "file_path": "work/diff_engine.py",
           "language": "python",
           "signature": {
@@ -98,8 +98,8 @@
           "node_type": "method",
           "name": "summary",
           "qualname": "diff_engine.DiffResult.summary",
-          "lineno": 62,
-          "end_lineno": 72,
+          "lineno": 65,
+          "end_lineno": 75,
           "file_path": "work/diff_engine.py",
           "language": "python",
           "signature": {
@@ -126,8 +126,8 @@
       "node_type": "function",
       "name": "compute_diff",
       "qualname": "diff_engine.compute_diff",
-      "lineno": 79,
-      "end_lineno": 147,
+      "lineno": 82,
+      "end_lineno": 155,
       "file_path": "work/diff_engine.py",
       "language": "python",
       "signature": {
@@ -146,6 +146,12 @@
             "kind": "positional_or_keyword",
             "annotation": "ApiNode",
             "default": null
+          },
+          {
+            "name": "verbose",
+            "kind": "positional_or_keyword",
+            "annotation": "bool",
+            "default": "False"
           }
         ]
       },
@@ -158,8 +164,8 @@
       "node_type": "function",
       "name": "save_snapshot",
       "qualname": "diff_engine.save_snapshot",
-      "lineno": 154,
-      "end_lineno": 170,
+      "lineno": 162,
+      "end_lineno": 178,
       "file_path": "work/diff_engine.py",
       "language": "python",
       "signature": {
@@ -190,8 +196,8 @@
       "node_type": "function",
       "name": "load_snapshot",
       "qualname": "diff_engine.load_snapshot",
-      "lineno": 173,
-      "end_lineno": 185,
+      "lineno": 181,
+      "end_lineno": 193,
       "file_path": "work/diff_engine.py",
       "language": "python",
       "signature": {
@@ -222,8 +228,8 @@
       "node_type": "function",
       "name": "diff_with_snapshot",
       "qualname": "diff_engine.diff_with_snapshot",
-      "lineno": 188,
-      "end_lineno": 215,
+      "lineno": 196,
+      "end_lineno": 223,
       "file_path": "work/diff_engine.py",
       "language": "python",
       "signature": {
@@ -254,8 +260,8 @@
       "node_type": "function",
       "name": "_flatten_tree",
       "qualname": "diff_engine._flatten_tree",
-      "lineno": 222,
-      "end_lineno": 231,
+      "lineno": 230,
+      "end_lineno": 239,
       "file_path": "work/diff_engine.py",
       "language": "python",
       "signature": {
@@ -280,8 +286,8 @@
       "node_type": "function",
       "name": "_detect_change_type",
       "qualname": "diff_engine._detect_change_type",
-      "lineno": 234,
-      "end_lineno": 267,
+      "lineno": 242,
+      "end_lineno": 275,
       "file_path": "work/diff_engine.py",
       "language": "python",
       "signature": {
@@ -312,8 +318,8 @@
       "node_type": "function",
       "name": "_signature_changed",
       "qualname": "diff_engine._signature_changed",
-      "lineno": 270,
-      "end_lineno": 294,
+      "lineno": 278,
+      "end_lineno": 302,
       "file_path": "work/diff_engine.py",
       "language": "python",
       "signature": {
@@ -344,8 +350,8 @@
       "node_type": "function",
       "name": "_is_complex",
       "qualname": "diff_engine._is_complex",
-      "lineno": 297,
-      "end_lineno": 333,
+      "lineno": 305,
+      "end_lineno": 341,
       "file_path": "work/diff_engine.py",
       "language": "python",
       "signature": {
@@ -370,8 +376,8 @@
       "node_type": "function",
       "name": "_decide_needs_llm",
       "qualname": "diff_engine._decide_needs_llm",
-      "lineno": 336,
-      "end_lineno": 346,
+      "lineno": 344,
+      "end_lineno": 354,
       "file_path": "work/diff_engine.py",
       "language": "python",
       "signature": {
@@ -402,8 +408,8 @@
       "node_type": "function",
       "name": "_node_to_dict",
       "qualname": "diff_engine._node_to_dict",
-      "lineno": 353,
-      "end_lineno": 383,
+      "lineno": 361,
+      "end_lineno": 391,
       "file_path": "work/diff_engine.py",
       "language": "python",
       "signature": {
@@ -428,8 +434,8 @@
       "node_type": "function",
       "name": "_dict_to_node",
       "qualname": "diff_engine._dict_to_node",
-      "lineno": 386,
-      "end_lineno": 423,
+      "lineno": 394,
+      "end_lineno": 431,
       "file_path": "work/diff_engine.py",
       "language": "python",
       "signature": {
@@ -444,6 +450,25 @@
             "default": null
           }
         ]
+      },
+      "docstring": null,
+      "decorators": [],
+      "exceptions": [],
+      "children": []
+    },
+    {
+      "node_type": "function",
+      "name": "get_version",
+      "qualname": "diff_engine.get_version",
+      "lineno": 441,
+      "end_lineno": 443,
+      "file_path": "work/diff_engine.py",
+      "language": "python",
+      "signature": {
+        "name": "get_version",
+        "return_annotation": "str",
+        "is_async": false,
+        "parameters": []
       },
       "docstring": null,
       "decorators": [],

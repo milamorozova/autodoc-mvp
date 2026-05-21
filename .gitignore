@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
-*.fodt
+templates/*.fodt
+docs/*.fodt.bak
 -c
 .vscode/
 .DS_Store
